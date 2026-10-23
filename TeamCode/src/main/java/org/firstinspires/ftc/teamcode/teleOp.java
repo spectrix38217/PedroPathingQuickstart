@@ -13,6 +13,8 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 
 import org.firstinspires.ftc.teamcode.pedro.Constants;
+import com.pedropathing.drivetrain.DrivePowers;
+import com.pedropathing.follower.ManualDrive;
 
 @Autonomous
 public class teleOp extends OpMode {
@@ -48,5 +50,29 @@ public class teleOp extends OpMode {
 
         follower.manual(forward, lateral, turn);
         follower.update();
+        DrivePowers powers = ManualDrive.fieldCentric(
+                -gamepad1.left_stick_y,
+                gamepad1.left_stick_x,
+                gamepad1.right_stick_x,
+                follower.pose().heading()
+        );
+        ManualDrive.driveOrHold(follower, powers);
+        follower.manual(powers);
+        follower.update();
+        Pose robotPose = follower.pose(); // returns a Pose object
+        telemetry.addData("Robot X", robotPose.x());
+        telemetry.addData("Robot Y", robotPose.y());
+        telemetry.addData("Robot Heading", Math.toDegrees(robotPose.heading()));
+        ManualDrive.driveOrHold(
+                follower,
+                -gamepad1.left_stick_y,
+                gamepad1.left_stick_x,
+                gamepad1.right_stick_x
+        );
+
+        follower.update();
+
     }
+
 }
+
