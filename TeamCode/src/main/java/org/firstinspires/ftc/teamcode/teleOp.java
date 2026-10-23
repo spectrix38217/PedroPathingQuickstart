@@ -58,11 +58,18 @@ public class teleOp extends OpMode {
         );
         ManualDrive.driveOrHold(follower, powers);
         follower.manual(powers);
+        if (gamepad1.start) {
+            //start should be startWasPressed, but it had an error.^
+            Pose cornerPose = new Pose(10.5, 10.5, Math.toRadians(90));
+            // On the fly Pose creation, we dont recommend this for Autonomous. Only accepts radians for heading
+            follower.setPose(cornerPose); // overrides our pose
+        }
         follower.update();
         Pose robotPose = follower.pose(); // returns a Pose object
         telemetry.addData("Robot X", robotPose.x());
         telemetry.addData("Robot Y", robotPose.y());
         telemetry.addData("Robot Heading", Math.toDegrees(robotPose.heading()));
+        follower.update();
         ManualDrive.driveOrHold(
                 follower,
                 -gamepad1.left_stick_y,
