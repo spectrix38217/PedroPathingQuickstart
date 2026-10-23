@@ -16,7 +16,14 @@ import org.firstinspires.ftc.teamcode.pedro.Constants;
 import com.pedropathing.drivetrain.DrivePowers;
 import com.pedropathing.follower.ManualDrive;
 
+import com.pedropathing.follower.Follower;
+import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import org.firstinspires.ftc.teamcode.pedro.Constants;
+
+
 @Autonomous
+@TeleOp(name = "TeleOp Yay")
 public class teleOp extends OpMode {
     private Follower follower;
     private final PoseFactory p = PoseFactory.degrees();
