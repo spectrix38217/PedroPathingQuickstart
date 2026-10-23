@@ -80,6 +80,18 @@ public class teleOp extends OpMode {
         follower.update();
 
     }
+// in your autonomous
+
+
+    @Override
+    public void stop() {
+        OpModeStorage.autonomousEndPose = follower.pose(); //saves your position in that file
+    }
+    @Override
+    public void start(){
+        follower.setPose(OpModeStorage.autonomousEndPose);
+        follower.update();
+    }
 
 }
 
