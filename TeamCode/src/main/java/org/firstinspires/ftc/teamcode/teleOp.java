@@ -23,7 +23,6 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import org.firstinspires.ftc.teamcode.pedro.Constants;
 
 
-@Autonomous
 @TeleOp(name = "teleOp")
 public class teleOp extends OpMode {
     private Follower follower;
