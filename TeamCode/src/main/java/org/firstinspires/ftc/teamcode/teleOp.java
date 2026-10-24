@@ -23,7 +23,7 @@ import org.firstinspires.ftc.teamcode.pedro.Constants;
 
 
 @Autonomous
-@TeleOp(name = "TeleOp Yay")
+@TeleOp(name = "TeleOp")
 public class teleOp extends OpMode {
     private Follower follower;
     private final PoseFactory p = PoseFactory.degrees();
