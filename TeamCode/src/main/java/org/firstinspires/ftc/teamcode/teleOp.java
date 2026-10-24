@@ -37,6 +37,7 @@ public class teleOp extends OpMode {
         return line(startPose, park).linear(startPose, park);
     }
 
+
     @Override
     public void init() {
         follower = Constants.create(hardwareMap);
@@ -51,12 +52,12 @@ public class teleOp extends OpMode {
 
     @Override
     public void loop() {
+        follower.update();
         double forward = -gamepad1.left_stick_y;
         double lateral = gamepad1.left_stick_x;
         double turn = gamepad1.right_stick_x;
 
         follower.manual(forward, lateral, turn);
-        follower.update();
         DrivePowers powers = ManualDrive.fieldCentric(
                 -gamepad1.left_stick_y,
                 gamepad1.left_stick_x,
