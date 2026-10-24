@@ -12,9 +12,8 @@ import com.pedropathing.ivy.Scheduler;
 import static com.pedropathing.ivy.Scheduler.schedule;
 import static com.pedropathing.ivy.pedro.PedroCommands.follow;
 
-
 @Autonomous
-public class autonomous extends OpMode {
+public class TeleOp extends OpMode {
     private Follower follower;
     private final PoseFactory p = PoseFactory.degrees();
     private final Pose startPose = p.of(24, 24, 0);
@@ -43,13 +42,5 @@ public class autonomous extends OpMode {
     public void loop() {
         follower.update();
         Scheduler.execute();
-        follower.update();
-        Scheduler.execute();
-        // add your other methods needed in the loop here
-        telemetry.addData("Follower Mode", follower.mode());
-        // We will add these two, but you can use the many other follower methods aswell in your own code!
-        telemetry.addData("Path completion", follower.completion());
-        telemetry.addData("Distance remaining in path", follower.remainingDistance());
-        telemetry.update();
     }
 }
