@@ -139,7 +139,7 @@ public class SpectrixAutoIvyTest extends LinearOpMode {
     private Command followPath(Follower follower, Path path) {
         return Command.build()
                 .setStart(() -> follower.follow(path))
-                .setExecute(() -> follower.update())
+                .setExecute(follower::update)
                 .setDone(() -> !follower.isBusy())
                 .requiring(follower);
     }
@@ -156,7 +156,7 @@ public class SpectrixAutoIvyTest extends LinearOpMode {
         return race(
                 waitMs(milliseconds),
                 Command.build()
-                        .setExecute(() -> follower.update())
+                        .setExecute(follower::update)
                         .requiring(follower)
         );
     }
