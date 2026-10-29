@@ -63,7 +63,7 @@ public class SpectrixTeleOp extends OpMode {
     @Override
     public void init() {
         follower = Constants.create(hardwareMap);
-        follower.setPose(startingPose == null ? Pose.zero() : startingPose);
+        follower.setPose((startingPose == null) ? Pose.zero() : startingPose);
         follower.update();
         savedPoseUp = Pose.zero();
         savedPoseDown = Pose.zero();
