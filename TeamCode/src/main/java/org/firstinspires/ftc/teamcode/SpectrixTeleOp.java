@@ -20,7 +20,21 @@ public class SpectrixTeleOp extends OpMode {
     private boolean automatedDrive;
     private double automatedStartTime = 0.0;
     private double slowModeMultiplier = 0.5;
-    private Pose savedPose = Pose.zero();
+
+    // 4 Distinct Saved Pose Slots (Up = Slot 1, Down = Slot 2, Left = Slot 3, Right = Slot 4)
+    private Pose savedPoseUp = Pose.zero();
+    private Pose savedPoseDown = Pose.zero();
+    private Pose savedPoseLeft = Pose.zero();
+    private Pose savedPoseRight = Pose.zero();
+
+    // 4 Pre-Coded Preset Positions (Recalled via Right Bumper + D-Pad Arrow)
+    private static final Pose PRESET_PARKING_BLUE = new Pose(26.68, -49.84, Math.toRadians(90.0));
+    private static final Pose PRESET_PARKING_RED = new Pose(99.27, 74.51, Math.toRadians(270.0));
+    private static final Pose PRESET_SHOOTING_AREA_LEFT = new Pose(17.21, 10.67, Math.toRadians(360.0));
+    private static final Pose PRESET_SHOOTING_AREA_RIGHT = new Pose(113.19, 9.84, Math.toRadians(180.0));
+
+    private Pose activeTargetPose = Pose.zero();
+    private String activeTargetName = "";
 
     // Heading Lock / Drift Correction PD Controller
     private double targetHeading = 0.0;
@@ -39,19 +53,24 @@ public class SpectrixTeleOp extends OpMode {
     private static final double LINEAR_VEL_TOLERANCE_IPS = 1.0;            // 1 inch/sec
     private static final double ANGULAR_VEL_TOLERANCE_RAD = Math.toRadians(5.0); // 5 deg/sec
 
-    private boolean previousA = false;
     private boolean previousB = false;
     private boolean previousX = false;
-    private boolean previousY = false;
     private boolean previousDpadUp = false;
     private boolean previousDpadDown = false;
+    private boolean previousDpadLeft = false;
+    private boolean previousDpadRight = false;
 
     @Override
     public void init() {
         follower = Constants.create(hardwareMap);
         follower.setPose(startingPose == null ? Pose.zero() : startingPose);
         follower.update();
-        savedPose = Pose.zero();
+        savedPoseUp = Pose.zero();
+        savedPoseDown = Pose.zero();
+        savedPoseLeft = Pose.zero();
+        savedPoseRight = Pose.zero();
+        activeTargetPose = Pose.zero();
+        activeTargetName = "";
         targetHeading = follower.pose().heading();
         isHeadingLocked = false;
         turnReleaseTime = 0.0;
@@ -68,6 +87,11 @@ public class SpectrixTeleOp extends OpMode {
     public void loop() {
         // Call this once per loop
         follower.update();
+
+        boolean dpadUpPressed = gamepad1.dpad_up && !previousDpadUp;
+        boolean dpadDownPressed = gamepad1.dpad_down && !previousDpadDown;
+        boolean dpadLeftPressed = gamepad1.dpad_left && !previousDpadLeft;
+        boolean dpadRightPressed = gamepad1.dpad_right && !previousDpadRight;
 
         if (!automatedDrive) {
             // Calculate speed multiplier based on Left Trigger input
@@ -133,18 +157,28 @@ public class SpectrixTeleOp extends OpMode {
             turnReleaseTime = getRuntime();
         }
 
-        // Trigger Combos (Right Trigger > 0.5)
-        if (gamepad1.right_trigger > 0.5) {
-            // Right Trigger + Y: Save current position and heading
-            if (gamepad1.y && !previousY) {
-                savedPose = follower.pose();
-            }
-            // Right Trigger + A: Ease onto saved position and heading accurately
-            if (gamepad1.a && !previousA) {
-                follower.hold(savedPose);
-                automatedDrive = true;
-                automatedStartTime = getRuntime();
-            }
+        // Save Positions: Y + D-Pad Direction (Up = Pos 1, Down = Pos 2, Left = Pos 3, Right = Pos 4)
+        if (gamepad1.y) {
+            if (dpadUpPressed) savedPoseUp = follower.pose();
+            if (dpadDownPressed) savedPoseDown = follower.pose();
+            if (dpadLeftPressed) savedPoseLeft = follower.pose();
+            if (dpadRightPressed) savedPoseRight = follower.pose();
+        }
+
+        // Recall Saved Positions: A + D-Pad Direction (Up = Pos 1, Down = Pos 2, Left = Pos 3, Right = Pos 4)
+        if (gamepad1.a) {
+            if (dpadUpPressed) startAutomatedDrive(savedPoseUp, "Saved Pos 1 (Up)");
+            else if (dpadDownPressed) startAutomatedDrive(savedPoseDown, "Saved Pos 2 (Down)");
+            else if (dpadLeftPressed) startAutomatedDrive(savedPoseLeft, "Saved Pos 3 (Left)");
+            else if (dpadRightPressed) startAutomatedDrive(savedPoseRight, "Saved Pos 4 (Right)");
+        }
+
+        // Recall Pre-Coded Preset Positions: Right Bumper + D-Pad Direction
+        if (gamepad1.right_bumper && !gamepad1.left_bumper) {
+            if (dpadUpPressed) startAutomatedDrive(PRESET_PARKING_BLUE, "Parking Blue");
+            else if (dpadDownPressed) startAutomatedDrive(PRESET_PARKING_RED, "Parking Red");
+            else if (dpadLeftPressed) startAutomatedDrive(PRESET_SHOOTING_AREA_LEFT, "Shooting Area Left");
+            else if (dpadRightPressed) startAutomatedDrive(PRESET_SHOOTING_AREA_RIGHT, "Shooting Area Right");
         }
 
         // Check if automated return drive has reached the target position & settled
@@ -154,12 +188,13 @@ public class SpectrixTeleOp extends OpMode {
                 // Manual cancel
                 follower.stop();
                 automatedDrive = false;
+                activeTargetName = "";
                 targetHeading = follower.pose().heading();
                 isHeadingLocked = false;
                 turnReleaseTime = getRuntime();
             } else if (timeInAuto > 0.3) { // Minimum 300ms drive window before checking target arrival
-                double distanceError = follower.pose().distance(savedPose);
-                double headingError = Math.abs(Angle.error(follower.pose().heading(), savedPose.heading()));
+                double distanceError = follower.pose().distance(activeTargetPose);
+                double headingError = Math.abs(Angle.error(follower.pose().heading(), activeTargetPose.heading()));
                 double linearSpeed = follower.velocity().toVector2D().magnitude();
                 double angularSpeed = Math.abs(follower.velocity().omega);
 
@@ -171,6 +206,7 @@ public class SpectrixTeleOp extends OpMode {
                 if (isAtTarget) {
                     follower.stop();
                     automatedDrive = false;
+                    activeTargetName = "";
                     targetHeading = follower.pose().heading();
                     isHeadingLocked = false;
                     turnReleaseTime = getRuntime();
@@ -178,22 +214,22 @@ public class SpectrixTeleOp extends OpMode {
             }
         }
 
-        // Adjust Slow Mode Strength: Left Trigger + D-Pad Up / Down
-        if (gamepad1.left_trigger > 0.5) {
-            if (gamepad1.dpad_up && !previousDpadUp) {
+        // Adjust Slow Mode Strength: Left Trigger + D-Pad Up / Down (when not pressing Y, A, or RB)
+        if (gamepad1.left_trigger > 0.5 && !gamepad1.y && !gamepad1.a && !gamepad1.right_bumper) {
+            if (dpadUpPressed) {
                 slowModeMultiplier = Math.min(1.0, slowModeMultiplier + 0.1);
             }
-            if (gamepad1.dpad_down && !previousDpadDown) {
+            if (dpadDownPressed) {
                 slowModeMultiplier = Math.max(0.1, slowModeMultiplier - 0.1);
             }
         }
 
-        previousA = gamepad1.a;
         previousB = gamepad1.b;
         previousX = gamepad1.x;
-        previousY = gamepad1.y;
         previousDpadUp = gamepad1.dpad_up;
         previousDpadDown = gamepad1.dpad_down;
+        previousDpadLeft = gamepad1.dpad_left;
+        previousDpadRight = gamepad1.dpad_right;
 
         Pose pose = follower.pose();
         Velocity velocity = follower.velocity();
@@ -202,9 +238,20 @@ public class SpectrixTeleOp extends OpMode {
         telemetry.addData("position", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", pose.x(), pose.y(), Math.toDegrees(pose.heading())));
         telemetry.addData("targetHeading", String.format(Locale.US, "%.2f°", Math.toDegrees(targetHeading)));
         telemetry.addData("velocity", String.format(Locale.US, "VX: %.2f, VY: %.2f, W: %.2f°/s", velocity.vx, velocity.vy, Math.toDegrees(velocity.omega)));
-        telemetry.addData("savedPosition", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", savedPose.x(), savedPose.y(), Math.toDegrees(savedPose.heading())));
+        telemetry.addData("savedUp (Pos 1)", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", savedPoseUp.x(), savedPoseUp.y(), Math.toDegrees(savedPoseUp.heading())));
+        telemetry.addData("savedDown (Pos 2)", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", savedPoseDown.x(), savedPoseDown.y(), Math.toDegrees(savedPoseDown.heading())));
+        telemetry.addData("savedLeft (Pos 3)", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", savedPoseLeft.x(), savedPoseLeft.y(), Math.toDegrees(savedPoseLeft.heading())));
+        telemetry.addData("savedRight (Pos 4)", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", savedPoseRight.x(), savedPoseRight.y(), Math.toDegrees(savedPoseRight.heading())));
         telemetry.addData("slowLimit", String.format(Locale.US, "%.1f", slowModeMultiplier));
-        telemetry.addData("automatedDrive", automatedDrive);
+        telemetry.addData("automatedDrive", automatedDrive ? activeTargetName : "FALSE");
         telemetry.update();
+    }
+
+    private void startAutomatedDrive(Pose target, String name) {
+        activeTargetPose = target;
+        activeTargetName = name;
+        follower.hold(target);
+        automatedDrive = true;
+        automatedStartTime = getRuntime();
     }
 }

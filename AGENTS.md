@@ -77,11 +77,11 @@ This document records the established architectural patterns, hardware configura
 | **Right Stick X** | Manual Heading Rotation (resets target heading on release after 250ms settling window) |
 | **Left Trigger (`L2`)** | Analog Slow Driving Speed (scales max speed down to `slowModeMultiplier`) |
 | **Left Trigger (`L2`) + D-Pad Up / Down** | Adjusts `slowModeMultiplier` in steps of `0.1` (clamped between `0.1` and `1.0`) |
-| **Right Trigger (`R2`) + Y** | Saves current robot pose and heading (`savedPose = follower.pose()`) |
-| **Right Trigger (`R2`) + A** | Drives autonomously to `savedPose` using precision hold with 2.0" / 3.0° tolerance |
+| **Y + D-Pad Up / Down / Left / Right** | Saves current robot pose and heading to Slot 1 (Up), Slot 2 (Down), Slot 3 (Left), or Slot 4 (Right) |
+| **A + D-Pad Up / Down / Left / Right** | Recalls and drives autonomously to user-saved pose Slot 1 (Up), Slot 2 (Down), Slot 3 (Left), or Slot 4 (Right) |
+| **Right Bumper (`R1`) + D-Pad Up / Down / Left / Right** | Recalls pre-coded preset positions: Parking Blue (Up: 26.68, -49.84, 90°), Parking Red (Down: 99.27, 74.51, 270°), Shooting Area Left (Left: 17.21, 10.67, 360°), Shooting Area Right (Right: 113.19, 9.84, 180°) |
 | **Left Bumper + Right Bumper + X** | Recalibrates robot position to origin `(0, 0, 0°)` |
 | **B Button** | Aborts automated return-to-position drive |
-
 ---
 
 ## 4. Canonical Reference Examples
