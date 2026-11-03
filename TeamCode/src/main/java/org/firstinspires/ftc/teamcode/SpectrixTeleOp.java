@@ -21,17 +21,11 @@ public class SpectrixTeleOp extends OpMode {
     private double automatedStartTime = 0.0;
     private double slowModeMultiplier = 0.5;
 
-    // Save State Slots for Y + D-Pad (Up = Pos 1, Down = Pos 2, Left = Pos 3, Right = Pos 4)
-    private Pose savedPoseYUp = null;
-    private Pose savedPoseYDown = null;
-    private Pose savedPoseYLeft = null;
-    private Pose savedPoseYRight = null;
-
-    // Save State Slots for A + D-Pad (Up = Pos 1, Down = Pos 2, Left = Pos 3, Right = Pos 4)
-    private Pose savedPoseAUp = null;
-    private Pose savedPoseADown = null;
-    private Pose savedPoseALeft = null;
-    private Pose savedPoseARight = null;
+    // 4 Distinct Saved Pose Slots (Up = Slot 1, Down = Slot 2, Left = Slot 3, Right = Slot 4)
+    private Pose savedPoseUp = Pose.zero();
+    private Pose savedPoseDown = Pose.zero();
+    private Pose savedPoseLeft = Pose.zero();
+    private Pose savedPoseRight = Pose.zero();
 
     // 4 Pre-Coded Preset Positions (Recalled via Right Bumper + D-Pad Arrow)
     private static final Pose PRESET_PARKING_BLUE = new Pose(26.68, -49.84, Math.toRadians(90.0));
@@ -71,14 +65,10 @@ public class SpectrixTeleOp extends OpMode {
         follower = Constants.create(hardwareMap);
         follower.setPose((startingPose == null) ? Pose.zero() : startingPose);
         follower.update();
-        savedPoseYUp = null;
-        savedPoseYDown = null;
-        savedPoseYLeft = null;
-        savedPoseYRight = null;
-        savedPoseAUp = null;
-        savedPoseADown = null;
-        savedPoseALeft = null;
-        savedPoseARight = null;
+        savedPoseUp = Pose.zero();
+        savedPoseDown = Pose.zero();
+        savedPoseLeft = Pose.zero();
+        savedPoseRight = Pose.zero();
         activeTargetPose = Pose.zero();
         activeTargetName = "";
         targetHeading = follower.pose().heading();
@@ -167,28 +157,20 @@ public class SpectrixTeleOp extends OpMode {
             turnReleaseTime = getRuntime();
         }
 
-        // Reset All Save States Shortcut: Y + A + Left Trigger
-        if (gamepad1.y && gamepad1.a && gamepad1.left_trigger > 0.5) {
-            savedPoseYUp = null;
-            savedPoseYDown = null;
-            savedPoseYLeft = null;
-            savedPoseYRight = null;
-            savedPoseAUp = null;
-            savedPoseADown = null;
-            savedPoseALeft = null;
-            savedPoseARight = null;
-        } else if (gamepad1.y && !gamepad1.a) {
-            // Y + D-Pad Save / Reset-to-State Slots (Up, Down, Left, Right)
-            if (dpadUpPressed) savedPoseYUp = handleSlotPress(savedPoseYUp, "Y-Up State");
-            else if (dpadDownPressed) savedPoseYDown = handleSlotPress(savedPoseYDown, "Y-Down State");
-            else if (dpadLeftPressed) savedPoseYLeft = handleSlotPress(savedPoseYLeft, "Y-Left State");
-            else if (dpadRightPressed) savedPoseYRight = handleSlotPress(savedPoseYRight, "Y-Right State");
-        } else if (gamepad1.a && !gamepad1.y) {
-            // A + D-Pad Save / Reset-to-State Slots (Up, Down, Left, Right)
-            if (dpadUpPressed) savedPoseAUp = handleSlotPress(savedPoseAUp, "A-Up State");
-            else if (dpadDownPressed) savedPoseADown = handleSlotPress(savedPoseADown, "A-Down State");
-            else if (dpadLeftPressed) savedPoseALeft = handleSlotPress(savedPoseALeft, "A-Left State");
-            else if (dpadRightPressed) savedPoseARight = handleSlotPress(savedPoseARight, "A-Right State");
+        // Save Positions: Y + D-Pad Direction (Up = Pos 1, Down = Pos 2, Left = Pos 3, Right = Pos 4)
+        if (gamepad1.y) {
+            if (dpadUpPressed) savedPoseUp = follower.pose();
+            if (dpadDownPressed) savedPoseDown = follower.pose();
+            if (dpadLeftPressed) savedPoseLeft = follower.pose();
+            if (dpadRightPressed) savedPoseRight = follower.pose();
+        }
+
+        // Recall Saved Positions: A + D-Pad Direction (Up = Pos 1, Down = Pos 2, Left = Pos 3, Right = Pos 4)
+        if (gamepad1.a) {
+            if (dpadUpPressed) startAutomatedDrive(savedPoseUp, "Saved Pos 1 (Up)");
+            else if (dpadDownPressed) startAutomatedDrive(savedPoseDown, "Saved Pos 2 (Down)");
+            else if (dpadLeftPressed) startAutomatedDrive(savedPoseLeft, "Saved Pos 3 (Left)");
+            else if (dpadRightPressed) startAutomatedDrive(savedPoseRight, "Saved Pos 4 (Right)");
         }
 
         // Recall Pre-Coded Preset Positions: Right Bumper + D-Pad Direction
@@ -256,33 +238,13 @@ public class SpectrixTeleOp extends OpMode {
         telemetry.addData("position", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", pose.x(), pose.y(), Math.toDegrees(pose.heading())));
         telemetry.addData("targetHeading", String.format(Locale.US, "%.2f°", Math.toDegrees(targetHeading)));
         telemetry.addData("velocity", String.format(Locale.US, "VX: %.2f, VY: %.2f, W: %.2f°/s", velocity.vx, velocity.vy, Math.toDegrees(velocity.omega)));
-        telemetry.addData("Y-Up State", formatSlot(savedPoseYUp));
-        telemetry.addData("Y-Down State", formatSlot(savedPoseYDown));
-        telemetry.addData("Y-Left State", formatSlot(savedPoseYLeft));
-        telemetry.addData("Y-Right State", formatSlot(savedPoseYRight));
-        telemetry.addData("A-Up State", formatSlot(savedPoseAUp));
-        telemetry.addData("A-Down State", formatSlot(savedPoseADown));
-        telemetry.addData("A-Left State", formatSlot(savedPoseALeft));
-        telemetry.addData("A-Right State", formatSlot(savedPoseARight));
+        telemetry.addData("savedUp (Pos 1)", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", savedPoseUp.x(), savedPoseUp.y(), Math.toDegrees(savedPoseUp.heading())));
+        telemetry.addData("savedDown (Pos 2)", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", savedPoseDown.x(), savedPoseDown.y(), Math.toDegrees(savedPoseDown.heading())));
+        telemetry.addData("savedLeft (Pos 3)", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", savedPoseLeft.x(), savedPoseLeft.y(), Math.toDegrees(savedPoseLeft.heading())));
+        telemetry.addData("savedRight (Pos 4)", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", savedPoseRight.x(), savedPoseRight.y(), Math.toDegrees(savedPoseRight.heading())));
         telemetry.addData("slowLimit", String.format(Locale.US, "%.1f", slowModeMultiplier));
         telemetry.addData("automatedDrive", automatedDrive ? activeTargetName : "FALSE");
         telemetry.update();
-    }
-
-    private Pose handleSlotPress(Pose currentSlot, String slotName) {
-        if (currentSlot == null) {
-            // First press -> Set Save State
-            return follower.pose();
-        } else {
-            // Pressed again -> Reset to the Save State (drive back to saved pose)
-            startAutomatedDrive(currentSlot, slotName);
-            return currentSlot;
-        }
-    }
-
-    private String formatSlot(Pose slot) {
-        if (slot == null) return "EMPTY";
-        return String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", slot.x(), slot.y(), Math.toDegrees(slot.heading()));
     }
 
     private void startAutomatedDrive(Pose target, String name) {

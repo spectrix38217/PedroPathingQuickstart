@@ -80,6 +80,9 @@ This document records the established architectural patterns, hardware configura
 | **Y + D-Pad Up / Down / Left / Right** | Saves current robot pose and heading to Slot 1 (Up), Slot 2 (Down), Slot 3 (Left), or Slot 4 (Right) |
 | **A + D-Pad Up / Down / Left / Right** | Recalls and drives autonomously to user-saved pose Slot 1 (Up), Slot 2 (Down), Slot 3 (Left), or Slot 4 (Right) |
 | **Right Bumper (`R1`) + D-Pad Up / Down / Left / Right** | Recalls pre-coded preset positions: Parking Blue (Up: 26.68, -49.84, 90°), Parking Red (Down: 99.27, 74.51, 270°), Shooting Area Left (Left: 17.21, 10.67, 360°), Shooting Area Right (Right: 113.19, 9.84, 180°) |
+| **X Button** | Intake Servo: Toggles intake ON (CCW / `INTAKE_CCW_POS`) or OFF (`INTAKE_STOP_POS`) |
+| **Left Bumper (`L1`) (while Intake is ON)** | Intake Servo: Toggles direction between Counterclockwise (Forward) and Clockwise (Reverse) |
+| **A Button** | Outtake Servo: Tapping `< 0.3s` spins CCW for $0.3\text{s}$; holding longer spins CCW until released |
 | **Left Bumper + Right Bumper + X** | Recalibrates robot position to origin `(0, 0, 0°)` |
 | **B Button** | Aborts automated return-to-position drive |
 ---
