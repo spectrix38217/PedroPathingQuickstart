@@ -26,11 +26,18 @@ public class SpectrixTeleOp extends OpMode {
     private Servo intakeServo;
     private Servo outtakeServo;
 
-    // Servo Target Positions (Adjust these values between 0.0 and 1.0 for your hardware mechanism)
-    public static double INTAKE_OPEN_POS = 1.0;
-    public static double INTAKE_CLOSED_POS = 0.0;
-    public static double OUTTAKE_OPEN_POS = 1.0;
-    public static double OUTTAKE_CLOSED_POS = 0.0;
+    // Servo Target Positions / Speeds (1.0 = CCW, 0.0 = CW, 0.5 = Stopped)
+    public static double INTAKE_CCW_POS = 1.0;
+    public static double INTAKE_CW_POS = 0.0;
+    public static double INTAKE_STOP_POS = 0.5;
+
+    public static double OUTTAKE_CCW_POS = 1.0;
+    public static double OUTTAKE_CW_POS = 0.0;
+    public static double OUTTAKE_STOP_POS = 0.5;
+
+    private boolean intakeOn = false;
+    private boolean intakeReversed = false;
+    private double aPressTime = 0.0;
 
     // 4 Distinct Saved Pose Slots (Up = Slot 1, Down = Slot 2, Left = Slot 3, Right = Slot 4)
     private Pose savedPoseUp = Pose.zero();
@@ -64,8 +71,10 @@ public class SpectrixTeleOp extends OpMode {
     private static final double LINEAR_VEL_TOLERANCE_IPS = 1.0;            // 1 inch/sec
     private static final double ANGULAR_VEL_TOLERANCE_RAD = Math.toRadians(5.0); // 5 deg/sec
 
+    private boolean previousA = false;
     private boolean previousB = false;
     private boolean previousX = false;
+    private boolean previousLeftBumper = false;
     private boolean previousDpadUp = false;
     private boolean previousDpadDown = false;
     private boolean previousDpadLeft = false;
@@ -80,9 +89,11 @@ public class SpectrixTeleOp extends OpMode {
         // Initialize Servos from Hardware Map
         intakeServo = hardwareMap.get(Servo.class, "intake");
         outtakeServo = hardwareMap.get(Servo.class, "outtake");
-        intakeServo.setPosition(INTAKE_CLOSED_POS);
-        outtakeServo.setPosition(OUTTAKE_CLOSED_POS);
+        intakeServo.setPosition(INTAKE_STOP_POS);
+        outtakeServo.setPosition(OUTTAKE_STOP_POS);
 
+        intakeOn = false;
+        intakeReversed = false;
         savedPoseUp = Pose.zero();
         savedPoseDown = Pose.zero();
         savedPoseLeft = Pose.zero();
@@ -92,6 +103,7 @@ public class SpectrixTeleOp extends OpMode {
         targetHeading = follower.pose().heading();
         isHeadingLocked = false;
         turnReleaseTime = 0.0;
+        aPressTime = 0.0;
     }
 
     @Override
@@ -110,6 +122,9 @@ public class SpectrixTeleOp extends OpMode {
         boolean dpadDownPressed = gamepad1.dpad_down && !previousDpadDown;
         boolean dpadLeftPressed = gamepad1.dpad_left && !previousDpadLeft;
         boolean dpadRightPressed = gamepad1.dpad_right && !previousDpadRight;
+        boolean dpadActive = gamepad1.dpad_up || gamepad1.dpad_down || gamepad1.dpad_left || gamepad1.dpad_right;
+        boolean xPressed = gamepad1.x && !previousX;
+        boolean lbPressed = gamepad1.left_bumper && !previousLeftBumper;
 
         if (!automatedDrive) {
             // Calculate speed multiplier based on Left Trigger input
@@ -165,11 +180,23 @@ public class SpectrixTeleOp extends OpMode {
         }
 
         // Reset Pose Shortcut: Left Bumper + Right Bumper + X
-        if (gamepad1.left_bumper && gamepad1.right_bumper && gamepad1.x && !previousX) {
+        if (gamepad1.left_bumper && gamepad1.right_bumper && xPressed) {
             follower.setPose(Pose.zero());
             targetHeading = 0.0;
             isHeadingLocked = false;
             turnReleaseTime = getRuntime();
+        }
+        // Toggle Intake On/Off: X (when not resetting pose or saving pose)
+        else if (xPressed && !gamepad1.right_bumper && !gamepad1.y) {
+            intakeOn = !intakeOn;
+            if (intakeOn) {
+                intakeReversed = false; // Reset to forward CCW when turning intake on
+            }
+        }
+
+        // Toggle Intake Direction (CW / CCW): Left Bumper while Intake is ON
+        if (intakeOn && lbPressed && !gamepad1.right_bumper) {
+            intakeReversed = !intakeReversed;
         }
 
         // Save Positions: Y + D-Pad Direction (Up = Pos 1, Down = Pos 2, Left = Pos 3, Right = Pos 4)
@@ -196,18 +223,32 @@ public class SpectrixTeleOp extends OpMode {
             else if (dpadRightPressed) startAutomatedDrive(PRESET_SHOOTING_AREA_RIGHT, "Shooting Area Right");
         }
 
-        // Intake Servo Control (Hold Left Bumper to Open/Activate Intake)
-        if (gamepad1.left_bumper && !gamepad1.right_bumper) {
-            intakeServo.setPosition(INTAKE_OPEN_POS);
+        // Intake Servo Control:
+        // - Press X to toggle ON / OFF
+        // - Press Left Bumper while ON to toggle direction between CCW (forward) and CW (reversed)
+        if (intakeOn) {
+            if (intakeReversed) {
+                intakeServo.setPosition(INTAKE_CW_POS);  // Reversed (Clockwise)
+            } else {
+                intakeServo.setPosition(INTAKE_CCW_POS); // Forward (Counterclockwise)
+            }
         } else {
-            intakeServo.setPosition(INTAKE_CLOSED_POS);
+            intakeServo.setPosition(INTAKE_STOP_POS);    // Off (Stopped)
         }
 
-        // Outtake Servo Control (Hold X to Open/Activate Outtake)
-        if (gamepad1.x && !gamepad1.left_bumper && !gamepad1.right_bumper) {
-            outtakeServo.setPosition(OUTTAKE_OPEN_POS);
+        // Outtake Servo Control:
+        // - Spins CCW for at least 0.3s when A is pressed (< 0.3s)
+        // - Continues spinning CCW as long as A is held if held longer than 0.3s
+        boolean aPressed = gamepad1.a && !previousA;
+        if (aPressed && !dpadActive) {
+            aPressTime = getRuntime();
+        }
+
+        double elapsedA = getRuntime() - aPressTime;
+        if ((gamepad1.a || elapsedA < 0.3) && !dpadActive && aPressTime > 0.0) {
+            outtakeServo.setPosition(OUTTAKE_CCW_POS); // Spin Counterclockwise
         } else {
-            outtakeServo.setPosition(OUTTAKE_CLOSED_POS);
+            outtakeServo.setPosition(OUTTAKE_STOP_POS); // Stopped
         }
 
         // Check if automated return drive has reached the target position & settled
@@ -253,8 +294,10 @@ public class SpectrixTeleOp extends OpMode {
             }
         }
 
+        previousA = gamepad1.a;
         previousB = gamepad1.b;
         previousX = gamepad1.x;
+        previousLeftBumper = gamepad1.left_bumper;
         previousDpadUp = gamepad1.dpad_up;
         previousDpadDown = gamepad1.dpad_down;
         previousDpadLeft = gamepad1.dpad_left;
@@ -271,7 +314,7 @@ public class SpectrixTeleOp extends OpMode {
         telemetry.addData("savedDown (Pos 2)", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", savedPoseDown.x(), savedPoseDown.y(), Math.toDegrees(savedPoseDown.heading())));
         telemetry.addData("savedLeft (Pos 3)", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", savedPoseLeft.x(), savedPoseLeft.y(), Math.toDegrees(savedPoseLeft.heading())));
         telemetry.addData("savedRight (Pos 4)", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", savedPoseRight.x(), savedPoseRight.y(), Math.toDegrees(savedPoseRight.heading())));
-        telemetry.addData("servos", String.format(Locale.US, "Intake: %.2f | Outtake: %.2f", intakeServo.getPosition(), outtakeServo.getPosition()));
+        telemetry.addData("servos", String.format(Locale.US, "Intake: %s (%.2f) | Outtake: %.2f", intakeOn ? (intakeReversed ? "REV (CW)" : "ON (CCW)") : "OFF", intakeServo.getPosition(), outtakeServo.getPosition()));
         telemetry.addData("slowLimit", String.format(Locale.US, "%.1f", slowModeMultiplier));
         telemetry.addData("automatedDrive", automatedDrive ? activeTargetName : "FALSE");
         telemetry.update();
