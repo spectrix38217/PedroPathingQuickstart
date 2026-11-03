@@ -80,6 +80,8 @@ This document records the established architectural patterns, hardware configura
 | **Y + D-Pad Up / Down / Left / Right** | Saves current robot pose and heading to Slot 1 (Up), Slot 2 (Down), Slot 3 (Left), or Slot 4 (Right) |
 | **A + D-Pad Up / Down / Left / Right** | Recalls and drives autonomously to user-saved pose Slot 1 (Up), Slot 2 (Down), Slot 3 (Left), or Slot 4 (Right) |
 | **Right Bumper (`R1`) + D-Pad Up / Down / Left / Right** | Recalls pre-coded preset positions: Parking Blue (Up: 26.68, -49.84, 90°), Parking Red (Down: 99.27, 74.51, 270°), Shooting Area Left (Left: 17.21, 10.67, 360°), Shooting Area Right (Right: 113.19, 9.84, 180°) |
+| **Left Bumper (`L1`)** | Intake Servo (`INTAKE_OPEN_POS` when held, `INTAKE_CLOSED_POS` when released) |
+| **X Button** | Outtake Servo (`OUTTAKE_OPEN_POS` when held, `OUTTAKE_CLOSED_POS` when released) |
 | **Left Bumper + Right Bumper + X** | Recalibrates robot position to origin `(0, 0, 0°)` |
 | **B Button** | Aborts automated return-to-position drive |
 ---

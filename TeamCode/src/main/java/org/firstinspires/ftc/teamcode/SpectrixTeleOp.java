@@ -10,6 +10,7 @@ import org.firstinspires.ftc.teamcode.pedro.Constants;
 
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.Servo;
 
 import java.util.Locale;
 
@@ -20,6 +21,16 @@ public class SpectrixTeleOp extends OpMode {
     private boolean automatedDrive;
     private double automatedStartTime = 0.0;
     private double slowModeMultiplier = 0.5;
+
+    // Servos
+    private Servo intakeServo;
+    private Servo outtakeServo;
+
+    // Servo Target Positions (Adjust these values between 0.0 and 1.0 for your hardware mechanism)
+    public static double INTAKE_OPEN_POS = 1.0;
+    public static double INTAKE_CLOSED_POS = 0.0;
+    public static double OUTTAKE_OPEN_POS = 1.0;
+    public static double OUTTAKE_CLOSED_POS = 0.0;
 
     // 4 Distinct Saved Pose Slots (Up = Slot 1, Down = Slot 2, Left = Slot 3, Right = Slot 4)
     private Pose savedPoseUp = Pose.zero();
@@ -65,6 +76,13 @@ public class SpectrixTeleOp extends OpMode {
         follower = Constants.create(hardwareMap);
         follower.setPose((startingPose == null) ? Pose.zero() : startingPose);
         follower.update();
+
+        // Initialize Servos from Hardware Map
+        intakeServo = hardwareMap.get(Servo.class, "intake");
+        outtakeServo = hardwareMap.get(Servo.class, "outtake");
+        intakeServo.setPosition(INTAKE_CLOSED_POS);
+        outtakeServo.setPosition(OUTTAKE_CLOSED_POS);
+
         savedPoseUp = Pose.zero();
         savedPoseDown = Pose.zero();
         savedPoseLeft = Pose.zero();
@@ -95,10 +113,7 @@ public class SpectrixTeleOp extends OpMode {
 
         if (!automatedDrive) {
             // Calculate speed multiplier based on Left Trigger input
-            double currentMultiplier = 1.0;
-            if (gamepad1.left_trigger > 0.1) {
-                currentMultiplier = 1.0 - (gamepad1.left_trigger * (1.0 - slowModeMultiplier));
-            }
+            double currentMultiplier = (gamepad1.left_trigger > 0.1) ? (1.0 - (gamepad1.left_trigger * (1.0 - slowModeMultiplier))) : 1.0;
 
             double forward = -gamepad1.left_stick_y * currentMultiplier;
             double lateral = -gamepad1.left_stick_x * currentMultiplier;
@@ -181,6 +196,20 @@ public class SpectrixTeleOp extends OpMode {
             else if (dpadRightPressed) startAutomatedDrive(PRESET_SHOOTING_AREA_RIGHT, "Shooting Area Right");
         }
 
+        // Intake Servo Control (Hold Left Bumper to Open/Activate Intake)
+        if (gamepad1.left_bumper && !gamepad1.right_bumper) {
+            intakeServo.setPosition(INTAKE_OPEN_POS);
+        } else {
+            intakeServo.setPosition(INTAKE_CLOSED_POS);
+        }
+
+        // Outtake Servo Control (Hold X to Open/Activate Outtake)
+        if (gamepad1.x && !gamepad1.left_bumper && !gamepad1.right_bumper) {
+            outtakeServo.setPosition(OUTTAKE_OPEN_POS);
+        } else {
+            outtakeServo.setPosition(OUTTAKE_CLOSED_POS);
+        }
+
         // Check if automated return drive has reached the target position & settled
         if (automatedDrive) {
             double timeInAuto = getRuntime() - automatedStartTime;
@@ -242,6 +271,7 @@ public class SpectrixTeleOp extends OpMode {
         telemetry.addData("savedDown (Pos 2)", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", savedPoseDown.x(), savedPoseDown.y(), Math.toDegrees(savedPoseDown.heading())));
         telemetry.addData("savedLeft (Pos 3)", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", savedPoseLeft.x(), savedPoseLeft.y(), Math.toDegrees(savedPoseLeft.heading())));
         telemetry.addData("savedRight (Pos 4)", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", savedPoseRight.x(), savedPoseRight.y(), Math.toDegrees(savedPoseRight.heading())));
+        telemetry.addData("servos", String.format(Locale.US, "Intake: %.2f | Outtake: %.2f", intakeServo.getPosition(), outtakeServo.getPosition()));
         telemetry.addData("slowLimit", String.format(Locale.US, "%.1f", slowModeMultiplier));
         telemetry.addData("automatedDrive", automatedDrive ? activeTargetName : "FALSE");
         telemetry.update();
