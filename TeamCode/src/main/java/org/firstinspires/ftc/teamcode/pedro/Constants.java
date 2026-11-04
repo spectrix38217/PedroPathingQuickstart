@@ -106,7 +106,7 @@ public class Constants {
 
         // Bar neutral position & offset for mirrored servos
         public static double BAR_NEUTRAL_POS = 0.5;
-        public static double BAR_OFFSET = 0.25; // right = 0.5 + 0.25, left = 0.5 - 0.25
+        public static double BAR_OFFSET = 0.467; // right = 0.5 + 0.467 (0.967), left = 0.5 - 0.467 (0.033)
 
         // Feeder CRServo Power Levels (-1.0 to 1.0)
         public static double FEEDER_SHOOT_POWER = -1.0; // Predefined full speed in reverse to feed shooter
@@ -128,8 +128,11 @@ public class Constants {
         public static double SHOOTER_MAX_RPM = 6000.0;
         public static double SHOOTER_IDLE_RPM = 2500.0;     // Predefined idle speed (2500 RPM)
         public static double SHOOTER_SHOOT_RPM = 5200.0;    // Predefined shooting speed (5200 RPM)
+        public static double SHOOTER_RPM_TOLERANCE = 250.0; // Allowed RPM window before feeder starts
+        public static double SHOOTER_RAMP_TIMEOUT_SEC = 1.0; // Maximum wait time before feeder starts
         public static double SHOOTER_TICKS_PER_REV = 28.0; // 1:1 encoder ticks per revolution
         public static double SHOOTER_P = 0.00025;         // Smoothed proportional gain for RPM error correction
+        public static double SHOOTER_I = 0.00005;         // Integral gain to eliminate steady-state RPM error
         public static double SHOOTER_FILTER_ALPHA = 0.25;  // Low-pass filter smoothing factor (0.0 to 1.0)
 
         // Pulsed Transfer Timing Constants (Seconds)

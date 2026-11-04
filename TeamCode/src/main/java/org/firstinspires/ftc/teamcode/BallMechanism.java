@@ -21,7 +21,7 @@ public class BallMechanism {
         IDLE,     // Shooter @ 2500 RPM, Feeder @ 0, Transfer @ 0
         INTAKE,   // Shooter @ 2500 RPM, Feeder @ 0, Transfer @ 0.8
         OUTTAKE,  // Shooter @ 2500 RPM, Feeder @ 0, Transfer @ -0.6
-        SHOOTING  // Shooter @ 5200 RPM, Feeder @ -1.0, Transfer Pulsed (0.5s off / 0.5s on)
+        SHOOTING  // Shooter @ targetShootRpm (5200 default), Feeder @ -1.0, Transfer Pulsed
     }
 
     private final Servo barLeft;
@@ -38,7 +38,10 @@ public class BallMechanism {
     private double targetShooterRpm = Constants.Motors.SHOOTER_IDLE_RPM;
     private double currentShooterRpm = 0.0;
     private double shooterPower = 0.0;
+    private double integralRpmError = 0.0;
+    private double lastRpmTarget = 0.0;
 
+    private boolean feederReady = false;
     private final ElapsedTime shootingTimer = new ElapsedTime();
 
     public BallMechanism(HardwareMap hardwareMap) {
@@ -49,7 +52,9 @@ public class BallMechanism {
         shooter = hardwareMap.get(DcMotorEx.class, Constants.Motors.SHOOTER_NAME);
 
         transfer.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        shooter.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        // RUN_WITHOUT_ENCODER allows custom software PI loop to control raw motor PWM without Control Hub firmware conflict
+        shooter.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         shooter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT); // No brake needed when turning off
 
         // Initialize to neutral/idle state
@@ -69,8 +74,8 @@ public class BallMechanism {
     /**
      * Bar Down: Lowers bar to release balls from flowers.
      * Servos move in opposite directions due to mirrored mounting:
-     * - barRight goes to positive offset from 0.5 (0.5 + 0.25 = 0.75)
-     * - barLeft goes to negative offset from 0.5 (0.5 - 0.25 = 0.25)
+     * - barRight goes to positive offset from 0.5 (0.5 + 0.467 = 0.967)
+     * - barLeft goes to negative offset from 0.5 (0.5 - 0.467 = 0.033)
      */
     public void barDown() {
         barRight.setPosition(Constants.Servos.BAR_NEUTRAL_POS + Constants.Servos.BAR_OFFSET);
@@ -95,6 +100,7 @@ public class BallMechanism {
     public void startIntake() {
         if (currentState != State.INTAKE) {
             currentState = State.INTAKE;
+            feederReady = false;
         }
     }
 
@@ -109,6 +115,7 @@ public class BallMechanism {
         } else {
             currentState = State.INTAKE;
         }
+        feederReady = false;
     }
 
     /**
@@ -117,16 +124,18 @@ public class BallMechanism {
     public void startOuttake() {
         if (currentState != State.OUTTAKE) {
             currentState = State.OUTTAKE;
+            feederReady = false;
         }
     }
 
     /**
      * Transition State Machine to SHOOTING.
-     * Resets shooting timer for initial feeder delay & pulsed transfer cycle.
+     * Resets shooting timer for flywheel ramp-up, feeder ready check & pulsed transfer cycle.
      */
     public void startShooting() {
         if (currentState != State.SHOOTING) {
             currentState = State.SHOOTING;
+            feederReady = false;
             shootingTimer.reset();
         }
     }
@@ -138,23 +147,24 @@ public class BallMechanism {
     public void idle() {
         if (currentState != State.IDLE) {
             currentState = State.IDLE;
+            feederReady = false;
         }
     }
 
     /**
-     * Adjusts target shooter RPM up or down by the specified delta.
-     * Modifies target shooting RPM if currently in SHOOTING state, otherwise modifies target idle RPM.
+     * Adjusts target shooting RPM up or down by the specified delta.
      *
      * @param deltaRpm Amount to change RPM by (e.g. +100.0 or -100.0).
      */
     public void adjustShooterRpm(double deltaRpm) {
+        targetShootRpm = Math.min(Constants.Motors.SHOOTER_MAX_RPM, Math.max(1000.0, targetShootRpm + deltaRpm));
         if (currentState == State.SHOOTING) {
-            targetShootRpm = Math.min(Constants.Motors.SHOOTER_MAX_RPM, Math.max(1000.0, targetShootRpm + deltaRpm));
             setShooterSpeed(targetShootRpm);
-        } else {
-            targetIdleRpm = Math.min(Constants.Motors.SHOOTER_MAX_RPM, Math.max(0.0, targetIdleRpm + deltaRpm));
-            setShooterSpeed(targetIdleRpm);
         }
+    }
+
+    public double getTargetShootRpm() {
+        return targetShootRpm;
     }
 
     /**
@@ -179,11 +189,12 @@ public class BallMechanism {
     public void shooterOff() {
         setShooterSpeed(0.0);
         shooterPower = 0.0;
+        integralRpmError = 0.0;
         shooter.setPower(0.0);
     }
 
     /**
-     * Updates the Mechanism State Machine, pulsed transfer logic, and shooter velocity loop.
+     * Updates the Mechanism State Machine, feeder ready check, pulsed transfer logic, and shooter velocity loop.
      * MUST be called once per loop iteration in TeleOp / Auto.
      */
     public void update() {
@@ -202,22 +213,28 @@ public class BallMechanism {
 
             case SHOOTING:
                 setShooterSpeed(targetShootRpm);
-                feeder.setPower(Constants.Servos.FEEDER_SHOOT_POWER);
 
                 double timeInShooting = shootingTimer.seconds();
-                if (timeInShooting < Constants.Motors.TRANSFER_PULSE_DELAY_SEC) {
-                    // Initial delay (0.5s): Feeder runs to prime shooter, transfer stays OFF
-                    transfer.setPower(Constants.Motors.TRANSFER_STOP_POWER);
-                } else {
-                    // Pulsed transfer: ON for 0.5s, OFF for 0.5s repeatedly
-                    double pulseCycleTime = (timeInShooting - Constants.Motors.TRANSFER_PULSE_DELAY_SEC)
-                            % (Constants.Motors.TRANSFER_PULSE_ON_SEC + Constants.Motors.TRANSFER_PULSE_OFF_SEC);
+                double rpmError = Math.abs(currentShooterRpm - targetShootRpm);
 
-                    if (pulseCycleTime < Constants.Motors.TRANSFER_PULSE_ON_SEC) {
-                        transfer.setPower(Constants.Motors.TRANSFER_INTAKE_POWER);
-                    } else {
-                        transfer.setPower(Constants.Motors.TRANSFER_STOP_POWER);
+                // Wait until flywheel reaches target speed vicinity (within 250 RPM) OR timeout (1.0 sec)
+                if (!feederReady) {
+                    boolean atSpeed = (rpmError <= Constants.Motors.SHOOTER_RPM_TOLERANCE);
+                    boolean timedOut = (timeInShooting >= Constants.Motors.SHOOTER_RAMP_TIMEOUT_SEC);
+
+                    if (atSpeed || timedOut) {
+                        feederReady = true;
                     }
+                }
+
+                if (feederReady) {
+                    // Run both feeder servo and transfer motor continuously while shooting
+                    feeder.setPower(Constants.Servos.FEEDER_SHOOT_POWER);
+                    transfer.setPower(Constants.Motors.TRANSFER_INTAKE_POWER);
+                } else {
+                    // Flywheel still ramping up: Feeder & Transfer stay OFF
+                    feeder.setPower(Constants.Servos.FEEDER_HOLD_POWER);
+                    transfer.setPower(Constants.Motors.TRANSFER_STOP_POWER);
                 }
                 break;
 
@@ -235,14 +252,21 @@ public class BallMechanism {
 
     /**
      * Monitors current RPM via encoder velocity, applies exponential low-pass filtering,
-     * and calculates motor power using Feedforward + Smoothed Proportional error correction.
+     * and calculates motor power using Feedforward + PI (Proportional-Integral) error correction.
      */
     private void updateShooterSpeed() {
         if (targetShooterRpm <= 0.0) {
             currentShooterRpm = 0.0;
             shooterPower = 0.0;
+            integralRpmError = 0.0;
             shooter.setPower(0.0);
             return;
+        }
+
+        // Reset integral accumulator when target RPM changes
+        if (Math.abs(targetShooterRpm - lastRpmTarget) > 10.0) {
+            integralRpmError = 0.0;
+            lastRpmTarget = targetShooterRpm;
         }
 
         // Calculate raw RPM from encoder velocity (ticks/sec)
@@ -253,18 +277,29 @@ public class BallMechanism {
         currentShooterRpm = (currentShooterRpm * (1.0 - Constants.Motors.SHOOTER_FILTER_ALPHA))
                           + (rawRpm * Constants.Motors.SHOOTER_FILTER_ALPHA);
 
-        // Feedforward + Capped Proportional Error Correction
-        double ffPower = targetShooterRpm / Constants.Motors.SHOOTER_MAX_RPM;
+        // Calculate RPM error
         double rpmError = targetShooterRpm - currentShooterRpm;
-        double pOutput = Math.min(0.20, Math.max(-0.20, rpmError * Constants.Motors.SHOOTER_P));
 
-        shooterPower = Math.min(1.0, Math.max(0.0, ffPower + pOutput));
+        // Accumulate Integral Error (with anti-windup clamping)
+        integralRpmError += rpmError * 0.02; // ~50Hz loop rate
+        integralRpmError = Math.min(2000.0, Math.max(-2000.0, integralRpmError));
+
+        // Feedforward + Proportional + Integral Error Correction
+        double ffPower = targetShooterRpm / Constants.Motors.SHOOTER_MAX_RPM;
+        double pOutput = Math.min(0.20, Math.max(-0.20, rpmError * Constants.Motors.SHOOTER_P));
+        double iOutput = Math.min(0.15, Math.max(-0.15, integralRpmError * Constants.Motors.SHOOTER_I));
+
+        shooterPower = Math.min(1.0, Math.max(0.0, ffPower + pOutput + iOutput));
         shooter.setPower(shooterPower);
     }
 
     // Getters for telemetry and state monitoring
     public State getCurrentState() {
         return currentState;
+    }
+
+    public boolean isFeederReady() {
+        return feederReady;
     }
 
     public boolean isBarDown() {

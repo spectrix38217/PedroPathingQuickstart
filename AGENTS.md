@@ -23,9 +23,9 @@ This document records the established architectural patterns, hardware configura
    - **Stationary Position & Heading Lock (Defense Resistance)**: When the driver is not steering (`|left_stick_y| <= 0.05`, `|left_stick_x| <= 0.05`, `|right_stick_x| <= 0.05`), a 350ms settling window (`SETTLING_DELAY_SEC = 0.35`) allows heavy rotational and translational momentum to coast down naturally before engaging `follower.hold(targetPositionPose)` to hold both position $(X, Y)$ and heading ($\theta$) against defense/pushing.
    - **Subsystem Encapsulation & State Machine**: Non-drivetrain mechanism hardware is encapsulated in `BallMechanism.java`, governed by an internal state machine (`IDLE`, `INTAKE`, `OUTTAKE`, `SHOOTING`).
    - **Intake Toggle State**: `X` button toggles `INTAKE` mode ON and OFF. Driving the robot does not affect intake state. Outtaking (`L1`) or Shooting (`R1`) interrupts and turns off intake mode.
-   - **Low-Pass Filtered Shooter Control**: High-speed flywheel velocity is monitored via encoder feedback (`shooter.getVelocity()`), smoothed using an exponential low-pass filter ($\alpha = 0.25$), and maintained using a Feedforward + Capped Proportional Error correction algorithm (`updateShooterSpeed()`).
+   - **Low-Pass Filtered Shooter PI Control**: High-speed flywheel velocity is monitored via encoder feedback (`shooter.getVelocity()`) in `RUN_WITHOUT_ENCODER` mode to avoid REV Control Hub firmware PID conflicts. Raw RPM is smoothed using an exponential low-pass filter ($\alpha = 0.25$) and maintained using a Feedforward + PI (Proportional-Integral) error correction algorithm with anti-windup clamping (`updateShooterSpeed()`).
    - **Shooter Speed Adjustment**: `adjustShooterRpm(±100.0)` dynamically tunes target RPM (target shooting RPM when shooting, or target idle RPM when idle).
-   - **Pulsed Transfer Shooting Strategy**: When shooting, the shooter flywheel ramps to 5200 RPM (adjustable) and the feeder runs continuously. After an initial `0.5s` delay (to let feeder prime), the transfer motor cycles ON for `0.5s` and OFF for `0.5s` repeatedly to prevent jam conditions.
+   - **Shooter Ramp-Up & Continuous Feed Shooting Strategy**: When shooting, the shooter flywheel ramps to 5200 RPM (adjustable). The feeder servo and transfer motor wait until the flywheel reaches target velocity (within 250 RPM) OR a 1.0s timeout expires. Once ready, both feeder servo and transfer motor run continuously to feed the shooter.
    - **Position Preservation & Handoff**: `OpModeStorage.autonomousEndPose` and `SpectrixTeleOp.startingPose` preserve the robot's field pose seamlessly between Autonomous and TeleOp.
 3. **Autonomous Architecture**:
    - Standard Sequential `LinearOpMode` (`SpectrixAutoTest`).
@@ -59,8 +59,8 @@ This document records the established architectural patterns, hardware configura
 
 ### Mechanism Hardware Mappings (`BallMechanism`)
 - **Flower Release Servos**:
-  - `barLeft` — Servo (Hardware map name: `"barLeft"`, neutral: `0.5`, offset: `-0.25` = `0.25`)
-  - `barRight` — Servo (Hardware map name: `"barRight"`, neutral: `0.5`, offset: `+0.25` = `0.75`)
+  - `barLeft` — Servo (Hardware map name: `"barLeft"`, neutral: `0.5`, offset: `-0.467` = `0.033`)
+  - `barRight` — Servo (Hardware map name: `"barRight"`, neutral: `0.5`, offset: `+0.467` = `0.967`)
 - **Feeder & Transfer**:
   - `feeder` — Continuous Rotation Servo (Hardware map name: `"feeder"`, shoot power: `-1.0`, hold: `0.0`)
   - `transfer` — Motor (Hardware map name: `"transfer"`, intake power: `0.8`, outtake: `-0.6`, zero power behavior: `BRAKE`)
@@ -79,7 +79,7 @@ This document records the established architectural patterns, hardware configura
 - **Telemetry Layout Order Standards**:
   - `build`: Always first line (`BuildConfig.BUILD_TIME`).
   - `position`: `X: %.2f in, Y: %.2f in, H: %.2f°`.
-  - `shooterRPM`: Prominent top parameter `%.0f / %.0f RPM (Pwr: %.2f)`.
+  - `shooterRPM`: Prominent top parameter `%.0f / %.0f RPM [ShootTarget: %.0f RPM] (Pwr: %.2f)`.
   - `state`: Prominent top parameter `Mech: %s | AutoDrive: %s`.
 
 ### Loop Safety & Non-Blocking Rules
@@ -97,7 +97,7 @@ This document records the established architectural patterns, hardware configura
 | **Y Button (without D-Pad)** | BallMechanism: Toggles flower release bar Up (`barUp()`, $0.5$) or Down (`barDown()`, $0.5 \pm 0.25$) |
 | **X Button (without D-Pad)** | BallMechanism: **Toggles** `INTAKE` mode ON <-> OFF (`transfer` motor at $80\%$ / `0.8`, `feeder` holding $0.0$, shooter @ 2500 RPM) |
 | **Left Bumper (`L1`) (without D-Pad)** | BallMechanism: State transition to `OUTTAKE` (`transfer` motor backwards $60\%$ / `-0.6`, `feeder` holding $0.0$, shooter @ 2500 RPM); turns intake OFF when released |
-| **Right Bumper (`R1`) (without D-Pad)** | BallMechanism: State transition to `SHOOTING` (shooter @ 5200 RPM, `feeder` CRServo reverse $-1.0$, `transfer` motor pulsing $0.5\text{s}$ OFF / $0.5\text{s}$ ON); turns intake OFF when released |
+| **Right Bumper (`R1`) (without D-Pad)** | BallMechanism: State transition to `SHOOTING` (shooter @ 5200 RPM, `feeder` CRServo reverse $-1.0$, `transfer` motor continuous $80\%$ / `0.8`); turns intake OFF when released |
 | **Y + D-Pad Up / Down / Left / Right** | Saves current robot pose and heading to Slot 1 (Up), Slot 2 (Down), Slot 3 (Left), or Slot 4 (Right) |
 | **A + D-Pad Up / Down / Left / Right** | Recalls and drives autonomously to user-saved pose Slot 1 (Up), Slot 2 (Down), Slot 3 (Left), or Slot 4 (Right) |
 | **Right Bumper (`R1`) + D-Pad Up / Down / Left / Right** | Recalls pre-coded preset positions: Parking Blue (Up: 26.68, -49.84, 90°), Parking Red (Down: 99.27, 74.51, 270°), Shooting Area Left (Left: 17.21, 10.67, 360°), Shooting Area Right (Right: 113.19, 9.84, 180°) |
@@ -119,5 +119,15 @@ The following files represent the **golden reference implementations** for this 
 3. **Standard Autonomous Implementation**:
    - [SpectrixAutoTest.java](file:///C:/Users/lajos/Projects/QuickStart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/SpectrixAutoTest.java) — Golden reference for procedural `LinearOpMode` autonomous execution with Pedro Pathing.
 
-4. **Hardware & Localizer Configuration**:
+4. **Servo Calibration Implementation**:
+   - [BarCalibTeleOp.java](file:///C:/Users/lajos/Projects/QuickStart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/BarCalibTeleOp.java) — Golden reference for tuning and calibrating mirrored servo offset values.
+
+5. **Hardware & Localizer Configuration**:
    - [Constants.java](file:///C:/Users/lajos/Projects/QuickStart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/pedro/Constants.java) — Golden reference for Mecanum drivetrain, OctoQuad localizer, Foresight algorithm settings, and mechanism constants.
+
+---
+
+## 5. External Reference Code (`examples/` Directory)
+
+- **Purpose**: The `examples/` folder in the repository root (e.g. `examples/MOEBo-Sapiens-Decode/`) contains sample code from other teams for conceptual inspiration.
+- **Usage Rule for Agents & Developers**: Use these files for **high-level architectural ideas and logic ONLY** (e.g., state machine transitions, sensor rumble feedback). **DO NOT copy code directly** from `examples/`, as it may use older API packages or non-standard conventions. Always adapt concepts to match the active Pedro Pathing 1.1.1 architecture, `BallMechanism` state machine, and code standards defined in this document.

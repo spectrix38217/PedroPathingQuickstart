@@ -13,7 +13,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import java.util.Locale;
 
-@TeleOp
+@TeleOp(name="0 - Main TeleOp", group="TeleOp")
 public class SpectrixTeleOp extends OpMode {
     private Follower follower;
     private BallMechanism ballMechanism;
@@ -311,7 +311,7 @@ public class SpectrixTeleOp extends OpMode {
 
         telemetry.addData("build", BuildConfig.BUILD_TIME);
         telemetry.addData("position", String.format(Locale.US, "X: %.2f in, Y: %.2f in, H: %.2f°", pose.x(), pose.y(), Math.toDegrees(pose.heading())));
-        telemetry.addData("shooterRPM", String.format(Locale.US, "%.0f / %.0f RPM (Pwr: %.2f)", ballMechanism.getCurrentShooterRpm(), ballMechanism.getTargetShooterRpm(), ballMechanism.getShooterPower()));
+        telemetry.addData("shooterRPM", String.format(Locale.US, "%.0f / %.0f RPM [ShootTarget: %.0f RPM] (Pwr: %.2f)", ballMechanism.getCurrentShooterRpm(), ballMechanism.getTargetShooterRpm(), ballMechanism.getTargetShootRpm(), ballMechanism.getShooterPower()));
         telemetry.addData("state", String.format(Locale.US, "Mech: %s | AutoDrive: %s", ballMechanism.getCurrentState(), automatedDrive ? activeTargetName : "OFF"));
         telemetry.addData("posLock", isPositionLocked ? String.format(Locale.US, "X: %.2f, Y: %.2f", targetPositionPose.x(), targetPositionPose.y()) : "OFF");
         telemetry.addData("targetHeading", String.format(Locale.US, "%.2f°", Math.toDegrees(targetHeading)));
