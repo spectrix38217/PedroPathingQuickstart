@@ -38,16 +38,21 @@ public class SpectrixTeleOp extends OpMode {
     private Pose activeTargetPose = Pose.zero();
     private String activeTargetName = "";
 
-    // Heading Lock / Drift Correction PD Controller
+    // Manual Turn Speed Scaling (Capped to 60% max turning speed)
+    private static final double MAX_MANUAL_TURN_SCALE = 0.60;
+
+    // Heading & Position Lock Controller (Defense Resistance)
+    private Pose targetPositionPose = Pose.zero();
     private double targetHeading = 0.0;
+    private boolean isPositionLocked = false;
     private boolean isHeadingLocked = false;
-    private double turnReleaseTime = 0.0;
-    private static final double TURN_THRESHOLD = 0.05;
-    private static final double SETTLING_DELAY_SEC = 0.25; // 250ms settling delay after stick release
-    private static final double HEADING_P = 0.35;          // Smooth, gentle proportional gain
-    private static final double HEADING_D = 0.02;          // Damping term to stop momentum
+    private double driveReleaseTime = 0.0;
+    private static final double STICK_THRESHOLD = 0.05;
+    private static final double SETTLING_DELAY_SEC = 0.35; // 350ms settling delay for heavier robot
+    private static final double HEADING_P = 0.30;          // Smooth proportional gain
+    private static final double HEADING_D = 0.04;          // Damping for higher rotational inertia
     private static final double HEADING_DEADBAND = Math.toRadians(1.5); // 1.5 degree deadband
-    private static final double MAX_CORRECTION_POWER = 0.25;            // Cap correction power at 25% max
+    private static final double MAX_CORRECTION_POWER = 0.20;            // Cap correction power at 20% max
 
     // Target Arrival Tolerance for Automated Return Drive
     private static final double DISTANCE_TOLERANCE_INCHES = 2.0;
@@ -78,16 +83,19 @@ public class SpectrixTeleOp extends OpMode {
         savedPoseRight = Pose.zero();
         activeTargetPose = Pose.zero();
         activeTargetName = "";
+        targetPositionPose = follower.pose();
         targetHeading = follower.pose().heading();
+        isPositionLocked = false;
         isHeadingLocked = false;
-        turnReleaseTime = 0.0;
+        driveReleaseTime = 0.0;
     }
 
     @Override
     public void start() {
         // Mode will be handled in loop() via follower.manual(...) or follower.hold(...)
+        targetPositionPose = follower.pose();
         targetHeading = follower.pose().heading();
-        turnReleaseTime = getRuntime();
+        driveReleaseTime = getRuntime();
     }
 
     @Override
@@ -103,65 +111,95 @@ public class SpectrixTeleOp extends OpMode {
         boolean xPressed = gamepad1.x && !previousX;
         boolean yPressed = gamepad1.y && !previousY;
 
+        boolean isDriving = Math.abs(gamepad1.left_stick_y) > STICK_THRESHOLD
+                || Math.abs(gamepad1.left_stick_x) > STICK_THRESHOLD;
+        boolean isTurning = Math.abs(gamepad1.right_stick_x) > STICK_THRESHOLD;
+
         if (!automatedDrive) {
             // Calculate speed multiplier based on Left Trigger input
             double currentMultiplier = (gamepad1.left_trigger > 0.1) ? (1.0 - (gamepad1.left_trigger * (1.0 - slowModeMultiplier))) : 1.0;
 
             double forward = -gamepad1.left_stick_y * currentMultiplier;
             double lateral = -gamepad1.left_stick_x * currentMultiplier;
-            double manualTurn = -gamepad1.right_stick_x * currentMultiplier;
+            double manualTurn = -gamepad1.right_stick_x * currentMultiplier * MAX_MANUAL_TURN_SCALE;
 
-            double turnPower;
-            if (Math.abs(gamepad1.right_stick_x) > TURN_THRESHOLD) {
-                // Driver is manually turning -> Use manual input and record release time
-                turnPower = manualTurn;
-                turnReleaseTime = getRuntime();
-                isHeadingLocked = false;
-            } else {
-                // Driver is driving straight/strafing without turning
-                double timeSinceRelease = getRuntime() - turnReleaseTime;
-                if (timeSinceRelease < SETTLING_DELAY_SEC) {
-                    // Settling phase: allow robot to naturally coast to a stop without fighting momentum
-                    turnPower = 0.0;
+            if (isDriving || isTurning) {
+                // Driver is actively steering -> Manual Drive
+                driveReleaseTime = getRuntime();
+                isPositionLocked = false;
+
+                double turnPower;
+                if (isTurning) {
+                    // Driver is manually turning -> Use manual input and record release time
+                    turnPower = manualTurn;
+                    targetHeading = follower.pose().heading();
                     isHeadingLocked = false;
                 } else {
-                    // Robot has settled -> Capture current settled heading and apply gentle PD correction
-                    if (!isHeadingLocked) {
-                        targetHeading = follower.pose().heading();
+                    // Driver is driving straight/strafing without turning -> Damped PD Heading Lock
+                    double timeSinceRelease = getRuntime() - driveReleaseTime;
+                    if (timeSinceRelease < SETTLING_DELAY_SEC) {
+                        turnPower = 0.0;
+                        isHeadingLocked = false;
+                    } else {
+                        if (!isHeadingLocked) {
+                            targetHeading = follower.pose().heading();
+                            isHeadingLocked = true;
+                        }
+
+                        double headingError = Angle.error(follower.pose().heading(), targetHeading);
+                        if (Math.abs(headingError) > HEADING_DEADBAND) {
+                            double angularVelocity = follower.velocity().omega;
+                            double turnPD = (headingError * HEADING_P) - (angularVelocity * HEADING_D);
+                            turnPower = Math.min(MAX_CORRECTION_POWER, Math.max(-MAX_CORRECTION_POWER, turnPD));
+                        } else {
+                            turnPower = 0.0;
+                        }
+                    }
+                }
+
+                DrivePowers powers = ManualDrive.fieldCentric(
+                        forward,
+                        lateral,
+                        turnPower,
+                        follower.pose().heading()
+                );
+
+                follower.manual(powers);
+            } else {
+                // Driver is NOT touching sticks -> Position & Heading Lock (Resists pushing)
+                double timeSinceRelease = getRuntime() - driveReleaseTime;
+                if (timeSinceRelease < SETTLING_DELAY_SEC) {
+                    // Settling phase: allow heavier robot to naturally coast to a stop without fighting momentum
+                    follower.manual(DrivePowers.zero());
+                    isPositionLocked = false;
+                    isHeadingLocked = false;
+                } else {
+                    // Robot has settled -> Lock position (X, Y) and heading (H) using follower.hold()
+                    if (!isPositionLocked) {
+                        targetPositionPose = follower.pose();
+                        targetHeading = targetPositionPose.heading();
+                        isPositionLocked = true;
                         isHeadingLocked = true;
                     }
 
-                    double headingError = Angle.error(follower.pose().heading(), targetHeading);
-                    if (Math.abs(headingError) > HEADING_DEADBAND) {
-                        double angularVelocity = follower.velocity().omega;
-                        double turnPD = (headingError * HEADING_P) - (angularVelocity * HEADING_D);
-                        turnPower = Math.min(MAX_CORRECTION_POWER, Math.max(-MAX_CORRECTION_POWER, turnPD));
-                    } else {
-                        turnPower = 0.0;
-                    }
+                    follower.hold(targetPositionPose);
                 }
             }
-
-            DrivePowers powers = ManualDrive.fieldCentric(
-                    forward,
-                    lateral,
-                    turnPower,
-                    follower.pose().heading()
-            );
-
-            follower.manual(powers);
         } else {
-            // Re-arm heading lock when automated drive finishes
+            // Re-arm heading/position lock when automated drive finishes
+            isPositionLocked = false;
             isHeadingLocked = false;
-            turnReleaseTime = getRuntime();
+            driveReleaseTime = getRuntime();
         }
 
         // Reset Pose Shortcut: Left Bumper + Right Bumper + X
         if (gamepad1.left_bumper && gamepad1.right_bumper && xPressed) {
             follower.setPose(Pose.zero());
+            targetPositionPose = Pose.zero();
             targetHeading = 0.0;
+            isPositionLocked = false;
             isHeadingLocked = false;
-            turnReleaseTime = getRuntime();
+            driveReleaseTime = getRuntime();
         }
 
         // Save Positions: Y + D-Pad Direction (Up = Pos 1, Down = Pos 2, Left = Pos 3, Right = Pos 4)
@@ -191,20 +229,23 @@ public class SpectrixTeleOp extends OpMode {
             else if (dpadRightPressed) startAutomatedDrive(PRESET_SHOOTING_AREA_RIGHT, "Shooting Area Right");
         }
 
-        // Ball Mechanism Controls (Intake, Outtake, Transfer to Shoot)
+        // Ball Mechanism Controls (Intake Toggle, Outtake, Shooting)
         if (gamepad1.right_bumper && !dpadActive && !gamepad1.left_bumper) {
-            // Right Bumper alone: Transfer to shoot (Transfer motor at 1.0, Feeder CRServo reverse -1.0)
-            ballMechanism.transferToShoot();
+            // Right Bumper alone: Shoot (Shooter at 5000 RPM, Feeder -1.0, Pulsed Transfer) - turns intake off when released
+            ballMechanism.startShooting();
         } else if (gamepad1.left_bumper && !gamepad1.right_bumper) {
-            // Left Bumper: Outtake (Transfer motor backwards -1.0, Feeder holding 0.0)
-            ballMechanism.outtake();
-        } else if (gamepad1.x && !gamepad1.right_bumper && !gamepad1.left_bumper) {
-            // X button: Intake (Transfer motor full speed 1.0, Feeder holding 0.0)
-            ballMechanism.intake();
-        } else {
-            // Idle: Stop transfer motor and feeder servo
-            ballMechanism.stop();
+            // Left Bumper: Outtake (Transfer motor backwards -0.6) - turns intake off when released
+            ballMechanism.startOuttake();
+        } else if (xPressed && !dpadActive && !gamepad1.right_bumper && !gamepad1.left_bumper) {
+            // X button: Toggle Intake ON <-> OFF
+            ballMechanism.toggleIntake();
+        } else if (ballMechanism.getCurrentState() != BallMechanism.State.INTAKE) {
+            // Idle if not intaking, shooting, or outtaking
+            ballMechanism.idle();
         }
+
+        // Update Mechanism Subsystem State Machine & Shooter Controller
+        ballMechanism.update();
 
         // Check if automated return drive has reached the target position & settled
         if (automatedDrive) {
@@ -215,8 +256,9 @@ public class SpectrixTeleOp extends OpMode {
                 automatedDrive = false;
                 activeTargetName = "";
                 targetHeading = follower.pose().heading();
+                isPositionLocked = false;
                 isHeadingLocked = false;
-                turnReleaseTime = getRuntime();
+                driveReleaseTime = getRuntime();
             } else if (timeInAuto > 0.3) { // Minimum 300ms drive window before checking target arrival
                 double distanceError = follower.pose().distance(activeTargetPose);
                 double headingError = Math.abs(Angle.error(follower.pose().heading(), activeTargetPose.heading()));
@@ -233,19 +275,26 @@ public class SpectrixTeleOp extends OpMode {
                     automatedDrive = false;
                     activeTargetName = "";
                     targetHeading = follower.pose().heading();
+                    isPositionLocked = false;
                     isHeadingLocked = false;
-                    turnReleaseTime = getRuntime();
+                    driveReleaseTime = getRuntime();
                 }
             }
         }
 
-        // Adjust Slow Mode Strength: Left Trigger + D-Pad Up / Down (when not pressing Y, A, or RB)
+        // Adjust Slow Mode Strength (D-Pad Up/Down) & Shooter Target RPM (D-Pad Left/Right)
         if (gamepad1.left_trigger > 0.5 && !gamepad1.y && !gamepad1.a && !gamepad1.right_bumper) {
             if (dpadUpPressed) {
                 slowModeMultiplier = Math.min(1.0, slowModeMultiplier + 0.1);
             }
             if (dpadDownPressed) {
                 slowModeMultiplier = Math.max(0.1, slowModeMultiplier - 0.1);
+            }
+            if (dpadRightPressed) {
+                ballMechanism.adjustShooterRpm(100.0);
+            }
+            if (dpadLeftPressed) {
+                ballMechanism.adjustShooterRpm(-100.0);
             }
         }
 
@@ -261,7 +310,10 @@ public class SpectrixTeleOp extends OpMode {
         Velocity velocity = follower.velocity();
 
         telemetry.addData("build", BuildConfig.BUILD_TIME);
-        telemetry.addData("position", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", pose.x(), pose.y(), Math.toDegrees(pose.heading())));
+        telemetry.addData("position", String.format(Locale.US, "X: %.2f in, Y: %.2f in, H: %.2f°", pose.x(), pose.y(), Math.toDegrees(pose.heading())));
+        telemetry.addData("shooterRPM", String.format(Locale.US, "%.0f / %.0f RPM (Pwr: %.2f)", ballMechanism.getCurrentShooterRpm(), ballMechanism.getTargetShooterRpm(), ballMechanism.getShooterPower()));
+        telemetry.addData("state", String.format(Locale.US, "Mech: %s | AutoDrive: %s", ballMechanism.getCurrentState(), automatedDrive ? activeTargetName : "OFF"));
+        telemetry.addData("posLock", isPositionLocked ? String.format(Locale.US, "X: %.2f, Y: %.2f", targetPositionPose.x(), targetPositionPose.y()) : "OFF");
         telemetry.addData("targetHeading", String.format(Locale.US, "%.2f°", Math.toDegrees(targetHeading)));
         telemetry.addData("velocity", String.format(Locale.US, "VX: %.2f, VY: %.2f, W: %.2f°/s", velocity.vx, velocity.vy, Math.toDegrees(velocity.omega)));
         telemetry.addData("savedUp (Pos 1)", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", savedPoseUp.x(), savedPoseUp.y(), Math.toDegrees(savedPoseUp.heading())));
@@ -270,7 +322,6 @@ public class SpectrixTeleOp extends OpMode {
         telemetry.addData("savedRight (Pos 4)", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", savedPoseRight.x(), savedPoseRight.y(), Math.toDegrees(savedPoseRight.heading())));
         telemetry.addData("mechanism", String.format(Locale.US, "BarDown: %b | Transfer: %.2f | Feeder: %.2f", ballMechanism.isBarDown(), ballMechanism.getTransferPower(), ballMechanism.getFeederPower()));
         telemetry.addData("slowLimit", String.format(Locale.US, "%.1f", slowModeMultiplier));
-        telemetry.addData("automatedDrive", automatedDrive ? activeTargetName : "FALSE");
         telemetry.update();
     }
 
