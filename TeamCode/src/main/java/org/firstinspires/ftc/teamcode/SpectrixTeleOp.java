@@ -16,6 +16,8 @@ import java.util.Locale;
 @TeleOp
 public class SpectrixTeleOp extends OpMode {
     private Follower follower;
+    private BallMechanism ballMechanism;
+
     public static Pose startingPose; // See ExampleAuto to understand how to use this
     private boolean automatedDrive;
     private double automatedStartTime = 0.0;
@@ -55,6 +57,7 @@ public class SpectrixTeleOp extends OpMode {
 
     private boolean previousB = false;
     private boolean previousX = false;
+    private boolean previousY = false;
     private boolean previousDpadUp = false;
     private boolean previousDpadDown = false;
     private boolean previousDpadLeft = false;
@@ -65,6 +68,10 @@ public class SpectrixTeleOp extends OpMode {
         follower = Constants.create(hardwareMap);
         follower.setPose((startingPose == null) ? Pose.zero() : startingPose);
         follower.update();
+
+        // Initialize Ball Mechanism Subsystem
+        ballMechanism = new BallMechanism(hardwareMap);
+
         savedPoseUp = Pose.zero();
         savedPoseDown = Pose.zero();
         savedPoseLeft = Pose.zero();
@@ -92,13 +99,13 @@ public class SpectrixTeleOp extends OpMode {
         boolean dpadDownPressed = gamepad1.dpad_down && !previousDpadDown;
         boolean dpadLeftPressed = gamepad1.dpad_left && !previousDpadLeft;
         boolean dpadRightPressed = gamepad1.dpad_right && !previousDpadRight;
+        boolean dpadActive = gamepad1.dpad_up || gamepad1.dpad_down || gamepad1.dpad_left || gamepad1.dpad_right;
+        boolean xPressed = gamepad1.x && !previousX;
+        boolean yPressed = gamepad1.y && !previousY;
 
         if (!automatedDrive) {
             // Calculate speed multiplier based on Left Trigger input
-            double currentMultiplier = 1.0;
-            if (gamepad1.left_trigger > 0.1) {
-                currentMultiplier = 1.0 - (gamepad1.left_trigger * (1.0 - slowModeMultiplier));
-            }
+            double currentMultiplier = (gamepad1.left_trigger > 0.1) ? (1.0 - (gamepad1.left_trigger * (1.0 - slowModeMultiplier))) : 1.0;
 
             double forward = -gamepad1.left_stick_y * currentMultiplier;
             double lateral = -gamepad1.left_stick_x * currentMultiplier;
@@ -150,7 +157,7 @@ public class SpectrixTeleOp extends OpMode {
         }
 
         // Reset Pose Shortcut: Left Bumper + Right Bumper + X
-        if (gamepad1.left_bumper && gamepad1.right_bumper && gamepad1.x && !previousX) {
+        if (gamepad1.left_bumper && gamepad1.right_bumper && xPressed) {
             follower.setPose(Pose.zero());
             targetHeading = 0.0;
             isHeadingLocked = false;
@@ -158,11 +165,14 @@ public class SpectrixTeleOp extends OpMode {
         }
 
         // Save Positions: Y + D-Pad Direction (Up = Pos 1, Down = Pos 2, Left = Pos 3, Right = Pos 4)
-        if (gamepad1.y) {
+        if (gamepad1.y && dpadActive) {
             if (dpadUpPressed) savedPoseUp = follower.pose();
             if (dpadDownPressed) savedPoseDown = follower.pose();
             if (dpadLeftPressed) savedPoseLeft = follower.pose();
             if (dpadRightPressed) savedPoseRight = follower.pose();
+        } else if (yPressed && !dpadActive) {
+            // Toggle Bar Up / Down when Y is pressed without D-Pad
+            ballMechanism.toggleBar();
         }
 
         // Recall Saved Positions: A + D-Pad Direction (Up = Pos 1, Down = Pos 2, Left = Pos 3, Right = Pos 4)
@@ -174,11 +184,26 @@ public class SpectrixTeleOp extends OpMode {
         }
 
         // Recall Pre-Coded Preset Positions: Right Bumper + D-Pad Direction
-        if (gamepad1.right_bumper && !gamepad1.left_bumper) {
+        if (gamepad1.right_bumper && !gamepad1.left_bumper && dpadActive) {
             if (dpadUpPressed) startAutomatedDrive(PRESET_PARKING_BLUE, "Parking Blue");
             else if (dpadDownPressed) startAutomatedDrive(PRESET_PARKING_RED, "Parking Red");
             else if (dpadLeftPressed) startAutomatedDrive(PRESET_SHOOTING_AREA_LEFT, "Shooting Area Left");
             else if (dpadRightPressed) startAutomatedDrive(PRESET_SHOOTING_AREA_RIGHT, "Shooting Area Right");
+        }
+
+        // Ball Mechanism Controls (Intake, Outtake, Transfer to Shoot)
+        if (gamepad1.right_bumper && !dpadActive && !gamepad1.left_bumper) {
+            // Right Bumper alone: Transfer to shoot (Transfer motor at 1.0, Feeder CRServo reverse -1.0)
+            ballMechanism.transferToShoot();
+        } else if (gamepad1.left_bumper && !gamepad1.right_bumper) {
+            // Left Bumper: Outtake (Transfer motor backwards -1.0, Feeder holding 0.0)
+            ballMechanism.outtake();
+        } else if (gamepad1.x && !gamepad1.right_bumper && !gamepad1.left_bumper) {
+            // X button: Intake (Transfer motor full speed 1.0, Feeder holding 0.0)
+            ballMechanism.intake();
+        } else {
+            // Idle: Stop transfer motor and feeder servo
+            ballMechanism.stop();
         }
 
         // Check if automated return drive has reached the target position & settled
@@ -226,6 +251,7 @@ public class SpectrixTeleOp extends OpMode {
 
         previousB = gamepad1.b;
         previousX = gamepad1.x;
+        previousY = gamepad1.y;
         previousDpadUp = gamepad1.dpad_up;
         previousDpadDown = gamepad1.dpad_down;
         previousDpadLeft = gamepad1.dpad_left;
@@ -242,6 +268,7 @@ public class SpectrixTeleOp extends OpMode {
         telemetry.addData("savedDown (Pos 2)", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", savedPoseDown.x(), savedPoseDown.y(), Math.toDegrees(savedPoseDown.heading())));
         telemetry.addData("savedLeft (Pos 3)", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", savedPoseLeft.x(), savedPoseLeft.y(), Math.toDegrees(savedPoseLeft.heading())));
         telemetry.addData("savedRight (Pos 4)", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", savedPoseRight.x(), savedPoseRight.y(), Math.toDegrees(savedPoseRight.heading())));
+        telemetry.addData("mechanism", String.format(Locale.US, "BarDown: %b | Transfer: %.2f | Feeder: %.2f", ballMechanism.isBarDown(), ballMechanism.getTransferPower(), ballMechanism.getFeederPower()));
         telemetry.addData("slowLimit", String.format(Locale.US, "%.1f", slowModeMultiplier));
         telemetry.addData("automatedDrive", automatedDrive ? activeTargetName : "FALSE");
         telemetry.update();

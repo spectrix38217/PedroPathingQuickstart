@@ -10,10 +10,7 @@ import com.pedropathing.revhub.drivetrains.Mecanum;
 import com.pedropathing.revhub.drivetrains.MecanumConfig;
 import com.pedropathing.revhub.localizers.OctoQuadConfig;
 import com.pedropathing.revhub.localizers.OctoQuadLocalizer;
-import com.pedropathing.revhub.localizers.PinpointConfig;
-import com.pedropathing.revhub.localizers.PinpointLocalizer;
 import com.qualcomm.hardware.digitalchickenlabs.OctoQuad;
-import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
@@ -21,6 +18,18 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
 public class Constants {
+    /* chudbot
+    public static MecanumConfig drivetrainConfig = new MecanumConfig(c -> {
+        c.frontLeftName.set("frontLeft");
+        c.frontRightName.set("frontRight");
+        c.backLeftName.set("backLeft");
+        c.backRightName.set("backRight");
+        c.frontLeftDirection.set(DcMotorSimple.Direction.REVERSE);
+        c.frontRightDirection.set(DcMotorSimple.Direction.FORWARD);
+        c.backLeftDirection.set(DcMotorSimple.Direction.REVERSE);
+        c.backRightDirection.set(DcMotorSimple.Direction.FORWARD);
+    });   */
+
     public static MecanumConfig drivetrainConfig = new MecanumConfig(c -> {
         c.frontLeftName.set("frontLeft");
         c.frontRightName.set("frontRight");
@@ -31,6 +40,8 @@ public class Constants {
         c.backLeftDirection.set(DcMotorSimple.Direction.REVERSE);
         c.backRightDirection.set(DcMotorSimple.Direction.FORWARD);
     });
+
+    /* chudbot
     public static OctoQuadConfig localizerConfig = new OctoQuadConfig(c -> {
         c.name.set("octoquad");
         c.xPodPort.set(0);
@@ -44,35 +55,75 @@ public class Constants {
         c.offsetUnits.set(DistanceUnit.INCH);
         c.i2cRecoveryMode.set(OctoQuad.I2cRecoveryMode.MODE_1_PERIPH_RST_ON_FRAME_ERR);
         c.headingScalar.set(1.0029082363709239);
+    }); */
+
+    public static OctoQuadConfig localizerConfig = new OctoQuadConfig(c -> {
+        c.name.set("octoquad");
+        c.xPodPort.set(0);
+        c.yPodPort.set(1);
+        c.ticksPerUnit.set(505.316944406);
+        c.xPodOffset.set(6.181102362204725);
+        c.yPodOffset.set(1.5748031496062993);
+        c.xPodDirection.set(OctoQuad.EncoderDirection.FORWARD);
+        c.yPodDirection.set(OctoQuad.EncoderDirection.FORWARD);
+        c.globalDistanceUnit.set(DistanceUnit.INCH);
+        c.offsetUnits.set(DistanceUnit.INCH);
+        c.i2cRecoveryMode.set(OctoQuad.I2cRecoveryMode.MODE_1_PERIPH_RST_ON_FRAME_ERR);
+        c.headingScalar.set(1.0095375423565784);
     });
 
     public static ForesightConfig foresightConfig = new ForesightConfig(
             c -> {
-                Controller primaryTranslationalForward = Controller.proportional(0.21541394593837285);
-                Controller secondaryTranslationalForward = Controller.proportional(0.07958969705758413);
-                Controller primaryTranslationalLateral = Controller.proportional(0.2605982648373263);
-                Controller secondaryTranslationalLateral = Controller.proportional(0.0962840955435104);
+                Controller primaryTranslationalForward = Controller.proportional(0.23383045429363739);
+                Controller secondaryTranslationalForward = Controller.proportional(0.08639410479668803);
+                Controller primaryTranslationalLateral = Controller.proportional(0.318670925643722);
+                Controller secondaryTranslationalLateral = Controller.proportional(0.11774039198139828);
 
                 c.forwardTranslational.set(Controller.piecewise(secondaryTranslationalForward).put(2.5, primaryTranslationalForward));
                 c.strafeTranslational.set(Controller.piecewise(secondaryTranslationalLateral).put(2.5, primaryTranslationalLateral));
 
-                c.coast.set(Controller.proportionalFeedforward(0.010344060266617027));
-                c.brake.set(Controller.proportionalFeedforward(0.008792451226624472));
+                c.coast.set(Controller.proportionalFeedforward(0.009864046726247242));
+                c.brake.set(Controller.proportionalFeedforward(0.008384439717310156));
 
-                c.headingFeedback.set(Controller.proportional(2.872819167464649));
-                c.headingBrakeCoefficients.set(Vector2D.cartesian(0.06831578605707352, 0.010520887541546705));
+                c.headingFeedback.set(Controller.proportional(3.0749175974993683));
+                c.headingBrakeCoefficients.set(Vector2D.cartesian(0.06741245521755912, 0.00920443775016025));
 
-                c.linearBrakeCoefficients.set(Matrix.diag(0.07523601141360965, 0.057573668336721125));
-                c.quadraticBrakeCoefficients.set(Matrix.diag(0.0025767614064640116, 0.00300676656970448));
+                c.linearBrakeCoefficients.set(Matrix.diag(0.05637595951731939, 0.06042487205764109));
+                c.quadraticBrakeCoefficients.set(Matrix.diag(0.002974695651846195, 0.0031578411591617686));
 
-                c.maxPathSpeed.set(0.5); // Limit max autonomous path speed to 50%
-
-                c.maxAchievableForwardVelocity.set(82.84083577335304);
-                c.maxAchievableStrafeVelocity.set(66.96204192215029);
-                c.naturalForwardDeceleration.set(22.13025903495807);
-                c.naturalStrafeDeceleration.set(22.613656616478025);
+                c.maxAchievableForwardVelocity.set(89.14539165651483);
+                c.maxAchievableStrafeVelocity.set(76.52309304693615);
+                c.naturalForwardDeceleration.set(17.450772847206967);
+                c.naturalStrafeDeceleration.set(20.296567510697628);
             }
     );
+
+    // Servo Hardware Mappings & Config Constants
+    public static class Servos {
+        public static String BAR_LEFT_NAME = "barLeft";
+        public static String BAR_RIGHT_NAME = "barRight";
+        public static String FEEDER_NAME = "feeder";
+
+        // Bar neutral position & offset for mirrored servos
+        public static double BAR_NEUTRAL_POS = 0.5;
+        public static double BAR_OFFSET = 0.25; // right = 0.5 + 0.25, left = 0.5 - 0.25
+
+        // Feeder CRServo Power Levels (-1.0 to 1.0)
+        public static double FEEDER_SHOOT_POWER = -1.0; // Predefined full speed in reverse to feed shooter
+        public static double FEEDER_HOLD_POWER = 0.0;  // Holding position (stopped)
+        public static double FEEDER_FORWARD_POWER = 1.0;
+    }
+
+    // Motor Hardware Mappings & Config Constants
+    public static class Motors {
+        public static String TRANSFER_NAME = "transfer";
+
+        // Transfer Motor Power Levels
+        public static double TRANSFER_INTAKE_POWER = 0.8;   // 80% speed intake
+        public static double TRANSFER_OUTTAKE_POWER = -0.6; // 60% speed outtake (reverse)
+        public static double TRANSFER_STOP_POWER = 0.0;
+    }
+
     public static Follower create(HardwareMap h) {
         return new Follower(
                 new OctoQuadLocalizer(h, localizerConfig),
