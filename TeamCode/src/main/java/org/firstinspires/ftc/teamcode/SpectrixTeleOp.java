@@ -38,8 +38,9 @@ public class SpectrixTeleOp extends OpMode {
     private Pose activeTargetPose = Pose.zero();
     private String activeTargetName = "";
 
-    // Manual Turn Speed Scaling (Capped to 60% max turning speed)
-    private static final double MAX_MANUAL_TURN_SCALE = 0.60;
+    // Absolute Pointing Rotation Gains (Snaps robot heading to pointed right-stick angle)
+    private static final double ABSOLUTE_HEADING_P = 1.25;       // Fast proportional gain for pointing
+    private static final double MAX_ABSOLUTE_TURN_POWER = 0.85;  // Cap turning power at 85% for quick orientation
 
     // Heading & Position Lock Controller (Defense Resistance)
     private Pose targetPositionPose = Pose.zero();
@@ -48,9 +49,10 @@ public class SpectrixTeleOp extends OpMode {
     private boolean isHeadingLocked = false;
     private double driveReleaseTime = 0.0;
     private static final double STICK_THRESHOLD = 0.05;
-    private static final double SETTLING_DELAY_SEC = 0.35; // 350ms settling delay for heavier robot
-    private static final double HEADING_P = 0.30;          // Smooth proportional gain
-    private static final double HEADING_D = 0.04;          // Damping for higher rotational inertia
+    private static final double POINTING_THRESHOLD = 0.20;       // Right stick activation threshold
+    private static final double SETTLING_DELAY_SEC = 0.35;       // 350ms settling delay for heavier robot
+    private static final double HEADING_P = 0.30;                // Smooth proportional gain for heading hold
+    private static final double HEADING_D = 0.04;                // Damping for higher rotational inertia
     private static final double HEADING_DEADBAND = Math.toRadians(1.5); // 1.5 degree deadband
     private static final double MAX_CORRECTION_POWER = 0.20;            // Cap correction power at 20% max
 
@@ -111,31 +113,43 @@ public class SpectrixTeleOp extends OpMode {
         boolean xPressed = gamepad1.x && !previousX;
         boolean yPressed = gamepad1.y && !previousY;
 
-        boolean isDriving = Math.abs(gamepad1.left_stick_y) > STICK_THRESHOLD
-                || Math.abs(gamepad1.left_stick_x) > STICK_THRESHOLD;
-        boolean isTurning = Math.abs(gamepad1.right_stick_x) > STICK_THRESHOLD;
+        double forwardInput = -gamepad1.left_stick_y;
+        double lateralInput = -gamepad1.left_stick_x;
+        double rx = gamepad1.right_stick_x;
+        double ry = -gamepad1.right_stick_y; // Inverted so UP is positive
+
+        double rightStickMagnitude = Math.hypot(rx, ry);
+        boolean isDriving = Math.hypot(forwardInput, lateralInput) > STICK_THRESHOLD;
+        boolean isPointingHeading = rightStickMagnitude >= POINTING_THRESHOLD;
 
         if (!automatedDrive) {
             // Calculate speed multiplier based on Left Trigger input
             double currentMultiplier = (gamepad1.left_trigger > 0.1) ? (1.0 - (gamepad1.left_trigger * (1.0 - slowModeMultiplier))) : 1.0;
 
-            double forward = -gamepad1.left_stick_y * currentMultiplier;
-            double lateral = -gamepad1.left_stick_x * currentMultiplier;
-            double manualTurn = -gamepad1.right_stick_x * currentMultiplier * MAX_MANUAL_TURN_SCALE;
+            double forward = forwardInput * currentMultiplier;
+            double lateral = lateralInput * currentMultiplier;
 
-            if (isDriving || isTurning) {
-                // Driver is actively steering -> Manual Drive
+            if (isDriving || isPointingHeading) {
+                // Driver is actively steering or moving -> Manual Drive
                 driveReleaseTime = getRuntime();
                 isPositionLocked = false;
 
                 double turnPower;
-                if (isTurning) {
-                    // Driver is manually turning -> Use manual input and record release time
-                    turnPower = manualTurn;
-                    targetHeading = follower.pose().heading();
-                    isHeadingLocked = false;
+                if (isPointingHeading) {
+                    // Right stick is pointed -> Calculate absolute target heading from vector:
+                    // Up (0, 1) = 0°, Right (1, 0) = 90°, Down (0, -1) = 180°, Left (-1, 0) = 270° (-90°)
+                    targetHeading = Math.atan2(rx, ry);
+
+                    double headingError = Angle.error(follower.pose().heading(), targetHeading);
+                    if (Math.abs(headingError) > HEADING_DEADBAND) {
+                        double angularVelocity = follower.velocity().omega;
+                        double turnPD = (headingError * ABSOLUTE_HEADING_P) - (angularVelocity * HEADING_D);
+                        turnPower = Math.min(MAX_ABSOLUTE_TURN_POWER, Math.max(-MAX_ABSOLUTE_TURN_POWER, turnPD));
+                    } else {
+                        turnPower = 0.0;
+                    }
                 } else {
-                    // Driver is driving straight/strafing without turning -> Damped PD Heading Lock
+                    // Right stick is released, but driver is translating -> Damped PD Heading Lock
                     double timeSinceRelease = getRuntime() - driveReleaseTime;
                     if (timeSinceRelease < SETTLING_DELAY_SEC) {
                         turnPower = 0.0;
@@ -169,7 +183,7 @@ public class SpectrixTeleOp extends OpMode {
                 // Driver is NOT touching sticks -> Position & Heading Lock (Resists pushing)
                 double timeSinceRelease = getRuntime() - driveReleaseTime;
                 if (timeSinceRelease < SETTLING_DELAY_SEC) {
-                    // Settling phase: allow heavier robot to naturally coast to a stopx without fighting momentum
+                    // Settling phase: allow heavier robot to naturally coast to a stop without fighting momentum
                     follower.manual(DrivePowers.zero());
                     isPositionLocked = false;
                     isHeadingLocked = false;
