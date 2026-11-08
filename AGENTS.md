@@ -61,7 +61,9 @@ This document records the established architectural patterns, hardware configura
 - **Flower Release Servos**:
   - `barLeft` — Servo (Hardware map name: `"barLeft"`, neutral: `0.5`, offset: `-0.467` = `0.033`)
   - `barRight` — Servo (Hardware map name: `"barRight"`, neutral: `0.5`, offset: `+0.467` = `0.967`)
-- **Feeder & Transfer**:
+- **Stopper Servo**:
+  - `stopper` — Servo (Hardware map name: `"stopper"`, open: `0.5`, closed: `0.22` by default; opens automatically when shooter flywheel is at speed during `SHOOTING` and closes immediately upon release)
+- **Feeder, Transfer & Shooter**:
   - `feeder` — Continuous Rotation Servo (Hardware map name: `"feeder"`, shoot power: `-1.0`, hold: `0.0`)
   - `transfer` — Motor (Hardware map name: `"transfer"`, intake power: `0.8`, outtake: `-0.6`, zero power behavior: `BRAKE`)
 - **Shooter Flywheel**:

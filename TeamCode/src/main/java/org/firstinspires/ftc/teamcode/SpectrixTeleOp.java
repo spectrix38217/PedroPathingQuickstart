@@ -169,7 +169,7 @@ public class SpectrixTeleOp extends OpMode {
                 // Driver is NOT touching sticks -> Position & Heading Lock (Resists pushing)
                 double timeSinceRelease = getRuntime() - driveReleaseTime;
                 if (timeSinceRelease < SETTLING_DELAY_SEC) {
-                    // Settling phase: allow heavier robot to naturally coast to a stop without fighting momentum
+                    // Settling phase: allow heavier robot to naturally coast to a stopx without fighting momentum
                     follower.manual(DrivePowers.zero());
                     isPositionLocked = false;
                     isHeadingLocked = false;

@@ -103,10 +103,16 @@ public class Constants {
         public static String BAR_LEFT_NAME = "barLeft";
         public static String BAR_RIGHT_NAME = "barRight";
         public static String FEEDER_NAME = "feeder";
+        public static String STOPPER_NAME = "stopper";
 
         // Bar neutral position & offset for mirrored servos
         public static double BAR_NEUTRAL_POS = 0.5;
-        public static double BAR_OFFSET = 0.467; // right = 0.5 + 0.467 (0.967), left = 0.5 - 0.467 (0.033)
+        public static double BAR_OFFSET = 0.45; // right = 0.5 + 0.45 (0.95), left = 0.5 - 0.45 (0.05)
+
+        // Stopper Servo Positions
+        public static double STOPPER_NEUTRAL_POS = 0.5;
+        public static double STOPPER_OPEN_POS = 0.5;
+        public static double STOPPER_CLOSED_POS = 0.22;
 
         // Feeder CRServo Power Levels (-1.0 to 1.0)
         public static double FEEDER_SHOOT_POWER = -1.0; // Predefined full speed in reverse to feed shooter

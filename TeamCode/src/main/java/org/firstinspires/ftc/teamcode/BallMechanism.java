@@ -11,6 +11,7 @@ import org.firstinspires.ftc.teamcode.pedro.Constants;
 /**
  * BallMechanism - Encapsulates mechanism servos, motors, and state machine:
  * - "barLeft" & "barRight" (Servos in servo mode for flower ball release)
+ * - "stopper" (Servo to hold/release balls before shooter flywheel)
  * - "feeder" (CRServo in continuous mode for feeding shooter)
  * - "transfer" (DcMotor for intake & outtake transfer)
  * - "shooter" (DcMotorEx with encoder for high-speed shooter flywheel control)
@@ -18,14 +19,15 @@ import org.firstinspires.ftc.teamcode.pedro.Constants;
 public class BallMechanism {
 
     public enum State {
-        IDLE,     // Shooter @ 2500 RPM, Feeder @ 0, Transfer @ 0
-        INTAKE,   // Shooter @ 2500 RPM, Feeder @ 0, Transfer @ 0.8
-        OUTTAKE,  // Shooter @ 2500 RPM, Feeder @ 0, Transfer @ -0.6
-        SHOOTING  // Shooter @ targetShootRpm (5200 default), Feeder @ -1.0, Transfer Pulsed
+        IDLE,     // Shooter @ 2500 RPM, Feeder @ 0, Transfer @ 0, Stopper CLOSED (0.22)
+        INTAKE,   // Shooter @ 2500 RPM, Feeder @ 0, Transfer @ 0.8, Stopper CLOSED (0.22)
+        OUTTAKE,  // Shooter @ 2500 RPM, Feeder @ 0, Transfer @ -0.6, Stopper CLOSED (0.22)
+        SHOOTING  // Shooter @ 5200 RPM, Stopper OPEN (0.5) when at speed, Feeder @ -1.0
     }
 
     private final Servo barLeft;
     private final Servo barRight;
+    private final Servo stopper;
     private final CRServo feeder;
     private final DcMotor transfer;
     private final DcMotorEx shooter;
@@ -47,6 +49,7 @@ public class BallMechanism {
     public BallMechanism(HardwareMap hardwareMap) {
         barLeft = hardwareMap.get(Servo.class, Constants.Servos.BAR_LEFT_NAME);
         barRight = hardwareMap.get(Servo.class, Constants.Servos.BAR_RIGHT_NAME);
+        stopper = hardwareMap.get(Servo.class, Constants.Servos.STOPPER_NAME);
         feeder = hardwareMap.get(CRServo.class, Constants.Servos.FEEDER_NAME);
         transfer = hardwareMap.get(DcMotor.class, Constants.Motors.TRANSFER_NAME);
         shooter = hardwareMap.get(DcMotorEx.class, Constants.Motors.SHOOTER_NAME);
@@ -57,8 +60,9 @@ public class BallMechanism {
         shooter.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         shooter.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT); // No brake needed when turning off
 
-        // Initialize to neutral/idle state
+        // Initialize to neutral/idle state with stopper CLOSED by default
         barUp();
+        closeStopper();
         idle();
     }
 
@@ -84,6 +88,20 @@ public class BallMechanism {
     }
 
     /**
+     * Opens the stopper servo to position 0.5 (allows balls into shooter).
+     */
+    public void openStopper() {
+        stopper.setPosition(Constants.Servos.STOPPER_OPEN_POS);
+    }
+
+    /**
+     * Closes the stopper servo to position 0.22 (blocks balls by default).
+     */
+    public void closeStopper() {
+        stopper.setPosition(Constants.Servos.STOPPER_CLOSED_POS);
+    }
+
+    /**
      * Toggle Bar Position (Up <-> Down).
      */
     public void toggleBar() {
@@ -101,6 +119,7 @@ public class BallMechanism {
         if (currentState != State.INTAKE) {
             currentState = State.INTAKE;
             feederReady = false;
+            closeStopper();
         }
     }
 
@@ -116,6 +135,7 @@ public class BallMechanism {
             currentState = State.INTAKE;
         }
         feederReady = false;
+        closeStopper();
     }
 
     /**
@@ -125,12 +145,13 @@ public class BallMechanism {
         if (currentState != State.OUTTAKE) {
             currentState = State.OUTTAKE;
             feederReady = false;
+            closeStopper();
         }
     }
 
     /**
      * Transition State Machine to SHOOTING.
-     * Resets shooting timer for flywheel ramp-up, feeder ready check & pulsed transfer cycle.
+     * Resets shooting timer for flywheel ramp-up and ready check.
      */
     public void startShooting() {
         if (currentState != State.SHOOTING) {
@@ -142,12 +163,13 @@ public class BallMechanism {
 
     /**
      * Transition State Machine to IDLE.
-     * Returns shooter to idle RPM, stops transfer and feeder.
+     * Returns shooter to idle RPM, stops transfer/feeder, and IMMEDIATELY closes stopper.
      */
     public void idle() {
         if (currentState != State.IDLE) {
             currentState = State.IDLE;
             feederReady = false;
+            closeStopper();
         }
     }
 
@@ -191,21 +213,24 @@ public class BallMechanism {
         shooterPower = 0.0;
         integralRpmError = 0.0;
         shooter.setPower(0.0);
+        closeStopper();
     }
 
     /**
-     * Updates the Mechanism State Machine, feeder ready check, pulsed transfer logic, and shooter velocity loop.
+     * Updates the Mechanism State Machine, feeder ready check, stopper control, and shooter velocity loop.
      * MUST be called once per loop iteration in TeleOp / Auto.
      */
     public void update() {
         switch (currentState) {
             case INTAKE:
+                closeStopper(); // Stopper stays CLOSED during intake
                 setShooterSpeed(targetIdleRpm);
                 transfer.setPower(Constants.Motors.TRANSFER_INTAKE_POWER);
                 feeder.setPower(Constants.Servos.FEEDER_HOLD_POWER);
                 break;
 
             case OUTTAKE:
+                closeStopper(); // Stopper stays CLOSED during outtake
                 setShooterSpeed(targetIdleRpm);
                 transfer.setPower(Constants.Motors.TRANSFER_OUTTAKE_POWER);
                 feeder.setPower(Constants.Servos.FEEDER_HOLD_POWER);
@@ -228,11 +253,13 @@ public class BallMechanism {
                 }
 
                 if (feederReady) {
-                    // Run both feeder servo and transfer motor continuously while shooting
+                    // Flywheel at speed: OPEN stopper FIRST, then run feeder and transfer to release balls!
+                    openStopper();
                     feeder.setPower(Constants.Servos.FEEDER_SHOOT_POWER);
                     transfer.setPower(Constants.Motors.TRANSFER_INTAKE_POWER);
                 } else {
-                    // Flywheel still ramping up: Feeder & Transfer stay OFF
+                    // Flywheel still ramping up: Stopper CLOSED, Feeder & Transfer OFF
+                    closeStopper();
                     feeder.setPower(Constants.Servos.FEEDER_HOLD_POWER);
                     transfer.setPower(Constants.Motors.TRANSFER_STOP_POWER);
                 }
@@ -240,6 +267,7 @@ public class BallMechanism {
 
             case IDLE:
             default:
+                closeStopper(); // Stopper stays CLOSED during idle
                 setShooterSpeed(targetIdleRpm);
                 transfer.setPower(Constants.Motors.TRANSFER_STOP_POWER);
                 feeder.setPower(Constants.Servos.FEEDER_HOLD_POWER);
@@ -332,5 +360,9 @@ public class BallMechanism {
 
     public double getShooterPower() {
         return shooterPower;
+    }
+
+    public double getStopperPosition() {
+        return stopper.getPosition();
     }
 }
