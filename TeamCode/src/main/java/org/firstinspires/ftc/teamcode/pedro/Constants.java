@@ -134,17 +134,13 @@ public class Constants {
         public static double SHOOTER_MAX_RPM = 6000.0;
         public static double SHOOTER_IDLE_RPM = 2500.0;     // Predefined idle speed (2500 RPM)
         public static double SHOOTER_SHOOT_RPM = 5200.0;    // Predefined shooting speed (5200 RPM)
-        public static double SHOOTER_RPM_TOLERANCE = 250.0; // Allowed RPM window before feeder starts
-        public static double SHOOTER_RAMP_TIMEOUT_SEC = 1.0; // Maximum wait time before feeder starts
+        public static double SHOOTER_RPM_TOLERANCE = 50.0;  // 50 RPM buffer window before feeder/shooting starts
+        public static double SHOOTER_RAMP_TIMEOUT_SEC = 1.0; // Maximum wait time before initial feed
         public static double SHOOTER_TICKS_PER_REV = 28.0; // 1:1 encoder ticks per revolution
-        public static double SHOOTER_P = 0.00025;         // Smoothed proportional gain for RPM error correction
-        public static double SHOOTER_I = 0.00005;         // Integral gain to eliminate steady-state RPM error
+        public static double SHOOTER_P = 0.00010;         // Gentler proportional gain to prevent overshooting
+        public static double SHOOTER_I = 0.00002;         // Gentler integral gain for steady-state RPM error
         public static double SHOOTER_FILTER_ALPHA = 0.25;  // Low-pass filter smoothing factor (0.0 to 1.0)
-
-        // Pulsed Transfer Timing Constants (Seconds)
-        public static double TRANSFER_PULSE_DELAY_SEC = 0.5; // Initial delay before transfer turns on
-        public static double TRANSFER_PULSE_ON_SEC = 0.5;    // Transfer ON duration during pulse
-        public static double TRANSFER_PULSE_OFF_SEC = 0.5;   // Transfer OFF duration during pulse
+        public static double SHOOTER_MAX_BOOST_POWER = 0.08; // Maximum power boost above feedforward to prevent overshooting
     }
 
     public static Follower create(HardwareMap h) {

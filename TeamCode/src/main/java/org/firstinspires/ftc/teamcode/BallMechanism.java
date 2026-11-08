@@ -36,7 +36,7 @@ public class BallMechanism {
     private boolean barIsDown = false;
 
     private double targetShootRpm = Constants.Motors.SHOOTER_SHOOT_RPM;
-    private double targetIdleRpm = Constants.Motors.SHOOTER_IDLE_RPM;
+    private final double targetIdleRpm = Constants.Motors.SHOOTER_IDLE_RPM;
     private double targetShooterRpm = Constants.Motors.SHOOTER_IDLE_RPM;
     private double currentShooterRpm = 0.0;
     private double shooterPower = 0.0;
@@ -240,16 +240,21 @@ public class BallMechanism {
                 setShooterSpeed(targetShootRpm);
 
                 double timeInShooting = shootingTimer.seconds();
-                double rpmError = Math.abs(currentShooterRpm - targetShootRpm);
+                double absRpmError = Math.abs(currentShooterRpm - targetShootRpm);
 
-                // Wait until flywheel reaches target speed vicinity (within 250 RPM) OR timeout (1.0 sec)
+                // Wait until flywheel reaches target speed vicinity (within 50 RPM) OR timeout (1.0 sec)
+                boolean atSpeed = (absRpmError <= Constants.Motors.SHOOTER_RPM_TOLERANCE);
+                boolean timedOut = (timeInShooting >= Constants.Motors.SHOOTER_RAMP_TIMEOUT_SEC);
+
                 if (!feederReady) {
-                    boolean atSpeed = (rpmError <= Constants.Motors.SHOOTER_RPM_TOLERANCE);
-                    boolean timedOut = (timeInShooting >= Constants.Motors.SHOOTER_RAMP_TIMEOUT_SEC);
-
                     if (atSpeed || timedOut) {
                         feederReady = true;
                     }
+                }
+
+                // If flywheel speed dips significantly below target during rapid fire, pause feeder so RPM recovers to 50 RPM window
+                if (feederReady && !atSpeed && absRpmError > Constants.Motors.SHOOTER_RPM_TOLERANCE * 2.0) {
+                    feederReady = false;
                 }
 
                 if (feederReady) {
@@ -258,7 +263,7 @@ public class BallMechanism {
                     feeder.setPower(Constants.Servos.FEEDER_SHOOT_POWER);
                     transfer.setPower(Constants.Motors.TRANSFER_INTAKE_POWER);
                 } else {
-                    // Flywheel still ramping up: Stopper CLOSED, Feeder & Transfer OFF
+                    // Flywheel still ramping up/recovering: Stopper CLOSED, Feeder & Transfer OFF
                     closeStopper();
                     feeder.setPower(Constants.Servos.FEEDER_HOLD_POWER);
                     transfer.setPower(Constants.Motors.TRANSFER_STOP_POWER);
@@ -308,16 +313,25 @@ public class BallMechanism {
         // Calculate RPM error
         double rpmError = targetShooterRpm - currentShooterRpm;
 
-        // Accumulate Integral Error (with anti-windup clamping)
-        integralRpmError += rpmError * 0.02; // ~50Hz loop rate
-        integralRpmError = Math.min(2000.0, Math.max(-2000.0, integralRpmError));
+        // Reset integral accumulator when current RPM exceeds target to eliminate overshooting
+        if (rpmError < 0) {
+            integralRpmError = 0.0;
+        } else {
+            // Accumulate Integral Error with anti-windup clamping
+            integralRpmError += rpmError * 0.02; // ~50Hz loop rate
+            integralRpmError = Math.min(500.0, Math.max(-500.0, integralRpmError));
+        }
 
         // Feedforward + Proportional + Integral Error Correction
         double ffPower = targetShooterRpm / Constants.Motors.SHOOTER_MAX_RPM;
-        double pOutput = Math.min(0.20, Math.max(-0.20, rpmError * Constants.Motors.SHOOTER_P));
-        double iOutput = Math.min(0.15, Math.max(-0.15, integralRpmError * Constants.Motors.SHOOTER_I));
+        double pOutput = Math.min(0.08, Math.max(-0.08, rpmError * Constants.Motors.SHOOTER_P));
+        double iOutput = Math.min(0.04, Math.max(-0.04, integralRpmError * Constants.Motors.SHOOTER_I));
 
-        shooterPower = Math.min(1.0, Math.max(0.0, ffPower + pOutput + iOutput));
+        // Limit maximum boost above feedforward to prevent aggressive re-ramp overshooting after a shot
+        double targetPower = ffPower + pOutput + iOutput;
+        double maxAllowedPower = Math.min(1.0, ffPower + Constants.Motors.SHOOTER_MAX_BOOST_POWER);
+        shooterPower = Math.min(maxAllowedPower, Math.max(0.0, targetPower));
+
         shooter.setPower(shooterPower);
     }
 
