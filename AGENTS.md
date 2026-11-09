@@ -25,7 +25,7 @@ This document records the established architectural patterns, hardware configura
    - **Intake Toggle State**: `X` button toggles `INTAKE` mode ON and OFF. Driving the robot does not affect intake state. Outtaking (`L1`) or Shooting (`R1`) interrupts and turns off intake mode.
    - **Low-Pass Filtered Shooter PI Control**: High-speed flywheel velocity is monitored via encoder feedback (`shooter.getVelocity()`) in `RUN_WITHOUT_ENCODER` mode to avoid REV Control Hub firmware PID conflicts. Raw RPM is smoothed using an exponential low-pass filter ($\alpha = 0.25$) and maintained using a Feedforward + PI (Proportional-Integral) error correction algorithm with anti-windup clamping (`updateShooterSpeed()`).
    - **Shooter Speed Adjustment**: `adjustShooterRpm(±100.0)` dynamically tunes target RPM (target shooting RPM when shooting, or target idle RPM when idle).
-   - **Shooter Ramp-Up & Continuous Feed Shooting Strategy**: When shooting, the shooter flywheel ramps to 5200 RPM (adjustable). The feeder servo and transfer motor wait until the flywheel reaches target velocity within a tight **50 RPM** buffer (`SHOOTER_RPM_TOLERANCE = 50.0`) OR a 1.0s timeout expires. Once ready, the stopper servo OPENS ($0.5$), and both feeder servo and transfer motor run continuously to feed the shooter. Maximum corrective boost power above feedforward is capped (`SHOOTER_MAX_BOOST_POWER = 0.08`) with instant integral reset on overspeed to prevent aggressive re-ramp overshooting after a ball is shot.
+   - **Shooter Ramp-Up & Continuous Feed Shooting Strategy**: When shooting, the shooter flywheel ramps to 4700 RPM default (adjustable via `L2 + D-Pad Left/Right`). The feeder servo and transfer motor wait until the flywheel reaches target velocity within a tight **50 RPM** buffer (`SHOOTER_RPM_TOLERANCE = 50.0`) OR a 1.0s timeout expires. Once ready, the stopper servo OPENS ($0.5$), and both feeder servo and transfer motor run continuously to feed the shooter. Maximum corrective boost power above feedforward is capped (`SHOOTER_MAX_BOOST_POWER = 0.20`) with instant integral reset on overspeed to prevent aggressive re-ramp overshooting after a ball is shot.
    - **Position Preservation & Handoff**: `OpModeStorage.autonomousEndPose` and `SpectrixTeleOp.startingPose` preserve the robot's field pose seamlessly between Autonomous and TeleOp.
 3. **Autonomous Architecture**:
    - Standard Sequential `LinearOpMode` (`SpectrixAutoTest`).
@@ -67,7 +67,7 @@ This document records the established architectural patterns, hardware configura
   - `feeder` — Continuous Rotation Servo (Hardware map name: `"feeder"`, shoot power: `-1.0`, hold: `0.0`)
   - `transfer` — Motor (Hardware map name: `"transfer"`, intake power: `0.8`, outtake: `-0.6`, zero power behavior: `BRAKE`)
 - **Shooter Flywheel**:
-  - `shooter` — `DcMotorEx` with encoder feedback (Hardware map name: `"shooter"`, top speed: `6000.0` RPM, idle speed: `2500.0` RPM, shooting speed: `5200.0` RPM, zero power behavior: `FLOAT`)
+  - `shooter` — `DcMotorEx` with encoder feedback (Hardware map name: `"shooter"`, max physical RPM at 12V: `5000.0` RPM, idle speed: `2500.0` RPM, shooting speed: `4700.0` RPM, zero power behavior: `FLOAT`)
 
 ---
 
@@ -97,9 +97,10 @@ This document records the established architectural patterns, hardware configura
 | **Left Trigger (`L2`) + D-Pad Up / Down** | Adjusts `slowModeMultiplier` in steps of `0.1` (clamped between `0.1` and `1.0`) |
 | **Left Trigger (`L2`) + D-Pad Left / Right** | Adjusts target shooter RPM down/up in steps of `100` RPM (modifies shooting RPM when shooting, or idle RPM when idle) |
 | **Y Button (without D-Pad)** | BallMechanism: Toggles flower release bar Up (`barUp()`, $0.5$) or Down (`barDown()`, $0.5 \pm 0.45$) |
-| **X Button (without D-Pad)** | BallMechanism: **Toggles** `INTAKE` mode ON <-> OFF (`transfer` motor at $80\%$ / `0.8`, `feeder` holding $0.0$, shooter @ 2500 RPM) |
-| **Left Bumper (`L1`) (without D-Pad)** | BallMechanism: State transition to `OUTTAKE` (`transfer` motor backwards $60\%$ / `-0.6`, `feeder` holding $0.0$, shooter @ 2500 RPM); turns intake OFF when released |
-| **Right Bumper (`R1`) (without D-Pad)** | BallMechanism: State transition to `SHOOTING` (shooter @ 5200 RPM, stopper OPEN $0.5$ when at speed, `feeder` CRServo reverse $-1.0$, `transfer` motor continuous $80\%$ / `0.8`); turns intake OFF when released |
+| **X Button (without D-Pad)** | BallMechanism: **Toggles** `INTAKE` mode (Forward / $80\%$) ON <-> OFF |
+| **Left Bumper (`L1`) + X Button** | BallMechanism: **Toggles** `INTAKE_REVERSE` mode (Reverse / $-60\%$) ON <-> OFF, or reverses direction if already intaking forward |
+| **Left Bumper (`L1`) (without X or D-Pad)** | BallMechanism: State transition to `OUTTAKE` (`transfer` motor backwards $60\%$ / `-0.6`); turns intake OFF when released |
+| **Right Bumper (`R1`) (without D-Pad)** | BallMechanism: State transition to `SHOOTING` (shooter @ 4700 RPM default, stopper OPEN $0.5$ when at speed, `feeder` CRServo reverse $-1.0$, `transfer` motor continuous $80\%$ / `0.8`); turns intake OFF when released |
 | **Y + D-Pad Up / Down / Left / Right** | Saves current robot pose and heading to Slot 1 (Up), Slot 2 (Down), Slot 3 (Left), or Slot 4 (Right) |
 | **A + D-Pad Up / Down / Left / Right** | Recalls and drives autonomously to user-saved pose Slot 1 (Up), Slot 2 (Down), Slot 3 (Left), or Slot 4 (Right) |
 | **Right Bumper (`R1`) + D-Pad Up / Down / Left / Right** | Recalls pre-coded preset positions: Parking Blue (Up: 26.68, -49.84, 90°), Parking Red (Down: 99.27, 74.51, 270°), Shooting Area Left (Left: 17.21, 10.67, 360°), Shooting Area Right (Right: 113.19, 9.84, 180°) |

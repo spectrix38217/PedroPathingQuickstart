@@ -19,10 +19,11 @@ import org.firstinspires.ftc.teamcode.pedro.Constants;
 public class BallMechanism {
 
     public enum State {
-        IDLE,     // Shooter @ 2500 RPM, Feeder @ 0, Transfer @ 0, Stopper CLOSED (0.22)
-        INTAKE,   // Shooter @ 2500 RPM, Feeder @ 0, Transfer @ 0.8, Stopper CLOSED (0.22)
-        OUTTAKE,  // Shooter @ 2500 RPM, Feeder @ 0, Transfer @ -0.6, Stopper CLOSED (0.22)
-        SHOOTING  // Shooter @ 5200 RPM, Stopper OPEN (0.5) when at speed, Feeder @ -1.0
+        IDLE,           // Shooter @ 2500 RPM, Feeder @ 0, Transfer @ 0, Stopper CLOSED (0.22)
+        INTAKE,         // Shooter @ 2500 RPM, Feeder @ 0, Transfer @ 0.8, Stopper CLOSED (0.22)
+        INTAKE_REVERSE, // Shooter @ 2500 RPM, Feeder @ 0, Transfer @ -0.6, Stopper CLOSED (0.22)
+        OUTTAKE,        // Shooter @ 2500 RPM, Feeder @ 0, Transfer @ -0.6, Stopper CLOSED (0.22)
+        SHOOTING        // Shooter @ 5200 RPM, Stopper OPEN (0.5) when at speed, Feeder @ -1.0
     }
 
     private final Servo barLeft;
@@ -124,15 +125,30 @@ public class BallMechanism {
     }
 
     /**
-     * Toggles Intake state ON <-> OFF.
+     * Toggles Normal Intake state ON <-> OFF (or switches from REVERSE to NORMAL).
      * If currently in INTAKE, switches to IDLE.
      * Otherwise, switches to INTAKE.
      */
-    public void toggleIntake() {
+    public void toggleIntakeNormal() {
         if (currentState == State.INTAKE) {
             currentState = State.IDLE;
         } else {
             currentState = State.INTAKE;
+        }
+        feederReady = false;
+        closeStopper();
+    }
+
+    /**
+     * Toggles Reverse Intake state ON <-> OFF (or switches from NORMAL to REVERSE).
+     * If currently in INTAKE_REVERSE, switches to IDLE.
+     * Otherwise, switches to INTAKE_REVERSE.
+     */
+    public void toggleIntakeReverse() {
+        if (currentState == State.INTAKE_REVERSE) {
+            currentState = State.IDLE;
+        } else {
+            currentState = State.INTAKE_REVERSE;
         }
         feederReady = false;
         closeStopper();
@@ -229,8 +245,9 @@ public class BallMechanism {
                 feeder.setPower(Constants.Servos.FEEDER_HOLD_POWER);
                 break;
 
+            case INTAKE_REVERSE:
             case OUTTAKE:
-                closeStopper(); // Stopper stays CLOSED during outtake
+                closeStopper(); // Stopper stays CLOSED during reverse intake / outtake
                 setShooterSpeed(targetIdleRpm);
                 transfer.setPower(Constants.Motors.TRANSFER_OUTTAKE_POWER);
                 feeder.setPower(Constants.Servos.FEEDER_HOLD_POWER);
@@ -324,13 +341,13 @@ public class BallMechanism {
 
         // Feedforward + Proportional + Integral Error Correction
         double ffPower = targetShooterRpm / Constants.Motors.SHOOTER_MAX_RPM;
-        double pOutput = Math.min(0.08, Math.max(-0.08, rpmError * Constants.Motors.SHOOTER_P));
-        double iOutput = Math.min(0.04, Math.max(-0.04, integralRpmError * Constants.Motors.SHOOTER_I));
+        double pOutput = Math.min(0.20, Math.max(-0.20, rpmError * Constants.Motors.SHOOTER_P));
+        double iOutput = Math.min(0.10, Math.max(-0.10, integralRpmError * Constants.Motors.SHOOTER_I));
 
-        // Limit maximum boost above feedforward to prevent aggressive re-ramp overshooting after a shot
+        // Allow motor to reach 100% (1.0) power when high RPMs are targeted
         double targetPower = ffPower + pOutput + iOutput;
         double maxAllowedPower = Math.min(1.0, ffPower + Constants.Motors.SHOOTER_MAX_BOOST_POWER);
-        shooterPower = Math.min(maxAllowedPower, Math.max(0.0, targetPower));
+        shooterPower = Math.min(1.0, Math.max(0.0, Math.min(maxAllowedPower, targetPower)));
 
         shooter.setPower(shooterPower);
     }

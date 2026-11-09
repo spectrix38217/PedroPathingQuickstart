@@ -244,18 +244,22 @@ public class SpectrixTeleOp extends OpMode {
             else if (dpadRightPressed) startAutomatedDrive(PRESET_SHOOTING_AREA_RIGHT, "Shooting Area Right");
         }
 
-        // Ball Mechanism Controls (Intake Toggle, Outtake, Shooting)
+        // Ball Mechanism Controls (Intake Toggle Normal/Reverse, Outtake, Shooting)
         if (gamepad1.right_bumper && !dpadActive && !gamepad1.left_bumper) {
-            // Right Bumper alone: Shoot (Shooter at 5000 RPM, Feeder -1.0, Pulsed Transfer) - turns intake off when released
+            // Right Bumper alone: Shoot (Shooter at 5200 RPM) - turns intake off when released
             ballMechanism.startShooting();
-        } else if (gamepad1.left_bumper && !gamepad1.right_bumper) {
-            // Left Bumper: Outtake (Transfer motor backwards -0.6) - turns intake off when released
+        } else if (gamepad1.left_bumper && !gamepad1.right_bumper && !gamepad1.x) {
+            // Left Bumper alone: Outtake (Transfer motor backwards -0.6) - turns intake off when released
             ballMechanism.startOuttake();
-        } else if (xPressed && !dpadActive && !gamepad1.right_bumper && !gamepad1.left_bumper) {
-            // X button: Toggle Intake ON <-> OFF
-            ballMechanism.toggleIntake();
-        } else if (ballMechanism.getCurrentState() != BallMechanism.State.INTAKE) {
-            // Idle if not intaking, shooting, or outtaking
+        } else if (xPressed && !dpadActive && !gamepad1.right_bumper) {
+            // X button: Pressing X alone toggles Normal Intake; pressing LB + X toggles Reverse Intake
+            if (gamepad1.left_bumper) {
+                ballMechanism.toggleIntakeReverse();
+            } else {
+                ballMechanism.toggleIntakeNormal();
+            }
+        } else if (ballMechanism.getCurrentState() != BallMechanism.State.INTAKE && ballMechanism.getCurrentState() != BallMechanism.State.INTAKE_REVERSE) {
+            // Idle if not intaking (normal or reverse), shooting, or outtaking
             ballMechanism.idle();
         }
 
