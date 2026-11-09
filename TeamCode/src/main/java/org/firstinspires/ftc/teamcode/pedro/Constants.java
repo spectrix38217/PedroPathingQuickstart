@@ -133,8 +133,8 @@ public class Constants {
         // Shooter Motor & Velocity Config
         public static double SHOOTER_MAX_RPM = 5000.0;      // Physical motor max RPM at 12V battery voltage under load
         public static double SHOOTER_IDLE_RPM = 2500.0;     // Predefined idle speed (2500 RPM)
-        public static double SHOOTER_SHOOT_RPM = 4700.0;    // Target shooting speed (4700 RPM)
-        public static double SHOOTER_RPM_TOLERANCE = 50.0;  // 50 RPM buffer window before feeder/shooting starts
+        public static double SHOOTER_SHOOT_RPM = 4900;    // Target shooting speed (4900 RPM)
+        public static double SHOOTER_RPM_TOLERANCE = 150.0;  // 150 RPM buffer window before feeder/shooting starts
         public static double SHOOTER_RAMP_TIMEOUT_SEC = 1.0; // Maximum wait time before initial feed
         public static double SHOOTER_TICKS_PER_REV = 28.0; // 1:1 encoder ticks per revolution
         public static double SHOOTER_P = 0.00015;         // Proportional gain for RPM error correction

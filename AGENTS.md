@@ -25,7 +25,7 @@ This document records the established architectural patterns, hardware configura
    - **Intake Toggle State**: `X` button toggles `INTAKE` mode ON and OFF. Driving the robot does not affect intake state. Outtaking (`L1`) or Shooting (`R1`) interrupts and turns off intake mode.
    - **Low-Pass Filtered Shooter PI Control**: High-speed flywheel velocity is monitored via encoder feedback (`shooter.getVelocity()`) in `RUN_WITHOUT_ENCODER` mode to avoid REV Control Hub firmware PID conflicts. Raw RPM is smoothed using an exponential low-pass filter ($\alpha = 0.25$) and maintained using a Feedforward + PI (Proportional-Integral) error correction algorithm with anti-windup clamping (`updateShooterSpeed()`).
    - **Shooter Speed Adjustment**: `adjustShooterRpm(±100.0)` dynamically tunes target RPM (target shooting RPM when shooting, or target idle RPM when idle).
-   - **Shooter Ramp-Up & Continuous Feed Shooting Strategy**: When shooting, the shooter flywheel ramps to 4700 RPM default (adjustable via `L2 + D-Pad Left/Right`). The feeder servo and transfer motor wait until the flywheel reaches target velocity within a tight **50 RPM** buffer (`SHOOTER_RPM_TOLERANCE = 50.0`) OR a 1.0s timeout expires. Once ready, the stopper servo OPENS ($0.5$), and both feeder servo and transfer motor run continuously to feed the shooter. Maximum corrective boost power above feedforward is capped (`SHOOTER_MAX_BOOST_POWER = 0.20`) with instant integral reset on overspeed to prevent aggressive re-ramp overshooting after a ball is shot.
+   - **Shooter Ramp-Up & Continuous Feed Shooting Strategy**: When shooting, the shooter flywheel ramps to 4750 RPM default (adjustable via `L2 + D-Pad Left/Right`). The feeder servo and transfer motor wait until the flywheel reaches target velocity within a tight **50 RPM** buffer (`SHOOTER_RPM_TOLERANCE = 50.0`) OR a 1.0s timeout expires. Once ready, the stopper servo OPENS ($0.5$), and both feeder servo and transfer motor run continuously to feed the shooter. Maximum corrective boost power above feedforward is capped (`SHOOTER_MAX_BOOST_POWER = 0.20`) with instant integral reset on overspeed to prevent aggressive re-ramp overshooting after a ball is shot.
    - **Position Preservation & Handoff**: `OpModeStorage.autonomousEndPose` and `SpectrixTeleOp.startingPose` preserve the robot's field pose seamlessly between Autonomous and TeleOp.
 3. **Autonomous Architecture**:
    - Standard Sequential `LinearOpMode` (`SpectrixAutoTest`).
@@ -67,7 +67,7 @@ This document records the established architectural patterns, hardware configura
   - `feeder` — Continuous Rotation Servo (Hardware map name: `"feeder"`, shoot power: `-1.0`, hold: `0.0`)
   - `transfer` — Motor (Hardware map name: `"transfer"`, intake power: `0.8`, outtake: `-0.6`, zero power behavior: `BRAKE`)
 - **Shooter Flywheel**:
-  - `shooter` — `DcMotorEx` with encoder feedback (Hardware map name: `"shooter"`, max physical RPM at 12V: `5000.0` RPM, idle speed: `2500.0` RPM, shooting speed: `4700.0` RPM, zero power behavior: `FLOAT`)
+  - `shooter` — `DcMotorEx` with encoder feedback (Hardware map name: `"shooter"`, max physical RPM at 12V: `5000.0` RPM, idle speed: `2500.0` RPM, shooting speed: `4750.0` RPM, zero power behavior: `FLOAT`)
 
 ---
 
@@ -121,7 +121,8 @@ The following files represent the **golden reference implementations** for this 
    - [BallMechanism.java](file:///C:/Users/spectrix/StudioProjects/PedroPathingQuickstart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/BallMechanism.java) — Golden reference for non-drivetrain mechanism encapsulation (`barLeft`, `barRight`, `stopper`, `feeder`, `transfer`, `shooter`).
 
 3. **Standard Autonomous Implementation**:
-   - [SpectrixAutoTest.java](file:///C:/Users/spectrix/StudioProjects/PedroPathingQuickstart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/SpectrixAutoTest.java) — Golden reference for procedural `LinearOpMode` autonomous execution with Pedro Pathing.
+   - [SpectrixAuto.java](file:///C:/Users/spectrix/StudioProjects/PedroPathingQuickstart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/SpectrixAuto.java) — Golden reference for production `LinearOpMode` autonomous execution with Pedro Pathing and OpModeStorage pose handoff.
+   - [SpectrixAutoTest.java](file:///C:/Users/spectrix/StudioProjects/PedroPathingQuickstart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/SpectrixAutoTest.java) — Golden reference for sample procedural execution with Pedro Pathing.
 
 4. **Servo Calibration Implementation**:
    - [BarCalibTeleOp.java](file:///C:/Users/spectrix/StudioProjects/PedroPathingQuickstart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/BarCalibTeleOp.java) — Golden reference for tuning and calibrating servo positions.
