@@ -38,9 +38,10 @@ public class SpectrixTeleOp extends OpMode {
     private Pose activeTargetPose = Pose.zero();
     private String activeTargetName = "";
 
-    // Absolute Pointing Rotation Gains (Snaps robot heading to pointed right-stick angle)
-    private static final double ABSOLUTE_HEADING_P = 1.25;       // Fast proportional gain for pointing
-    private static final double MAX_ABSOLUTE_TURN_POWER = 0.85;  // Cap turning power at 85% for quick orientation
+    // Absolute Pointing Rotation Gains (Snaps robot heading smoothly without overshooting or oscillation)
+    private static final double ABSOLUTE_HEADING_P = 0.45;       // Smooth proportional gain for angle pointing
+    private static final double ABSOLUTE_HEADING_D = 0.08;       // High derivative damping to eliminate overshoot
+    private static final double MAX_ABSOLUTE_TURN_POWER = 0.50;  // Cap turning power at 50% for stable rotation
 
     // Heading & Position Lock Controller (Defense Resistance)
     private Pose targetPositionPose = Pose.zero();
@@ -115,8 +116,8 @@ public class SpectrixTeleOp extends OpMode {
 
         double forwardInput = -gamepad1.left_stick_y;
         double lateralInput = -gamepad1.left_stick_x;
-        double rx = gamepad1.right_stick_x;
-        double ry = -gamepad1.right_stick_y; // Inverted so UP is positive
+        double rx = -gamepad1.right_stick_x; // Flipped X component so Left/Right match field orientation
+        double ry = -gamepad1.right_stick_y;  // Inverted Y component so UP is positive
 
         double rightStickMagnitude = Math.hypot(rx, ry);
         boolean isDriving = Math.hypot(forwardInput, lateralInput) > STICK_THRESHOLD;
@@ -137,13 +138,13 @@ public class SpectrixTeleOp extends OpMode {
                 double turnPower;
                 if (isPointingHeading) {
                     // Right stick is pointed -> Calculate absolute target heading from vector:
-                    // Up (0, 1) = 0°, Right (1, 0) = 90°, Down (0, -1) = 180°, Left (-1, 0) = 270° (-90°)
+                    // Up (0, 1) = 0°, Right (-1, 0) = 90°, Down (0, -1) = 180°, Left (1, 0) = 270° (-90°)
                     targetHeading = Math.atan2(rx, ry);
 
                     double headingError = Angle.error(follower.pose().heading(), targetHeading);
                     if (Math.abs(headingError) > HEADING_DEADBAND) {
                         double angularVelocity = follower.velocity().omega;
-                        double turnPD = (headingError * ABSOLUTE_HEADING_P) - (angularVelocity * HEADING_D);
+                        double turnPD = (headingError * ABSOLUTE_HEADING_P) - (angularVelocity * ABSOLUTE_HEADING_D);
                         turnPower = Math.min(MAX_ABSOLUTE_TURN_POWER, Math.max(-MAX_ABSOLUTE_TURN_POWER, turnPD));
                     } else {
                         turnPower = 0.0;
