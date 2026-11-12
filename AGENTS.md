@@ -100,7 +100,8 @@ This document records the established architectural patterns, hardware configura
 | **X Button (without D-Pad)** | BallMechanism: **Toggles** `INTAKE` mode (Forward / $80\%$) ON <-> OFF |
 | **Left Bumper (`L1`) + X Button** | BallMechanism: **Toggles** `INTAKE_REVERSE` mode (Reverse / $-60\%$) ON <-> OFF, or reverses direction if already intaking forward |
 | **Left Bumper (`L1`) (without X or D-Pad)** | BallMechanism: State transition to `OUTTAKE` (`transfer` motor backwards $60\%$ / `-0.6`); turns intake OFF when released |
-| **Right Bumper (`R1`) (without D-Pad)** | BallMechanism: State transition to `SHOOTING` (shooter @ 4700 RPM default, stopper OPEN $0.5$ when at speed, `feeder` CRServo reverse $-1.0$, `transfer` motor continuous $80\%$ / `0.8`); turns intake OFF when released |
+| **Right Bumper (`R1`) (without D-Pad)** | BallMechanism: State transition to `SHOOTING` (shooter @ 4750 RPM default, stopper OPEN $0.5$ when at speed, `feeder` CRServo reverse $-1.0$, `transfer` motor continuous $80\%$ / `0.8`); turns intake OFF when released |
+| **D-Pad Up / Down / Left / Right (alone)** | **Snap Turns**: Single press automatically turns the robot all the way to heading 0° (Up), 180° (Down), 90° (Left), or 270° (Right) using smooth PID control. |
 | **Y + D-Pad Up / Down / Left / Right** | Saves current robot pose and heading to Slot 1 (Up), Slot 2 (Down), Slot 3 (Left), or Slot 4 (Right) |
 | **A + D-Pad Up / Down / Left / Right** | Recalls and drives autonomously to user-saved pose Slot 1 (Up), Slot 2 (Down), Slot 3 (Left), or Slot 4 (Right) |
 | **Right Bumper (`R1`) + D-Pad Up / Down / Left / Right** | Recalls pre-coded preset positions: Parking Blue (Up: 26.68, -49.84, 90°), Parking Red (Down: 99.27, 74.51, 270°), Shooting Area Left (Left: 17.21, 10.67, 360°), Shooting Area Right (Right: 113.19, 9.84, 180°) |
