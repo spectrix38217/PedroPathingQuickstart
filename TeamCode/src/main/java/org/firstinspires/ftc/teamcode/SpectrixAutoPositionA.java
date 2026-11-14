@@ -14,6 +14,12 @@ import java.util.Locale;
 
 /**
  * SpectrixAutoPositionA - Autonomous OpMode for Position A starting location.
+ *
+ * <p>Execution Flow:
+ * 1. Drive to position (12, 30) facing 30° heading.
+ * 2. Shoot 4 times (ramp shooter to target RPM, open stopper, feed balls).
+ * 3. Drive to (-48, 0) facing 0° heading and hand off.
+ * 4. Save final pose to OpModeStorage & SpectrixTeleOp.startingPose upon completion.
  */
 @Autonomous(name = "SpectrixAuto Position A", group = "Autonomous")
 public class SpectrixAutoPositionA extends LinearOpMode {
@@ -29,14 +35,13 @@ public class SpectrixAutoPositionA extends LinearOpMode {
         Pose startPose = new Pose(0, 0, 0); // Starting position for Position A
         follower.setPose(startPose);
 
-        Pose pose1 = new Pose(24, 0, 0);
-        Path path1 = line(startPose, pose1).constant(0);
+        // Path 1: Drive to shooting position: X: 12 in, Y: 30 in, Heading: 30°
+        Pose shootPose = new Pose(12, 30, Math.toRadians(30));
+        Path pathShoot = line(startPose, shootPose).linear(0, Math.toRadians(30));
 
-        double ccw90Deg = Math.toRadians(90);
-        Pose pose2 = new Pose(24, 12, ccw90Deg);
-        Path path2 = line(pose1, pose2).linear(0, ccw90Deg);
-
-        Path path3 = line(pose2, startPose).linear(ccw90Deg, 0);
+        // Path 2: Drive to handoff position: X: -48 in, Y: 0 in, Heading: 0°
+        Pose handoffPose = new Pose(-48, 0, 0);
+        Path pathHandoff = line(shootPose, handoffPose).linear(Math.toRadians(30), 0);
 
         telemetry.addData("Status", "SpectrixAuto Position A Initialized & Ready!");
         telemetry.addData("Start Pose", startPose);
@@ -46,10 +51,14 @@ public class SpectrixAutoPositionA extends LinearOpMode {
 
         if (isStopRequested()) return;
 
-        followPath(path1, "1/3: Driving Forward 24 Inches");
-        waitSeconds(1.0, "Waiting 1 Second");
-        followPath(path2, "2/3: Strafing Left & Turning 90°");
-        followPath(path3, "3/3: Returning to Origin (0,0)");
+        // --- Action 1: Drive to shooting position (12, 30) @ 30° ---
+        followPath(pathShoot, "1/3: Driving to Shoot Position (12, 30) @ 30°");
+
+        // --- Action 2: Shoot 4 times (runs shooter flywheel & feeds balls for 3.0 seconds) ---
+        shootBalls(3.0, "2/3: Shooting 4 Balls");
+
+        // --- Action 3: Drive to (-48, 0) @ 0° heading and hand off ---
+        followPath(pathHandoff, "3/3: Driving to (-48, 0) @ 0° Handoff Position");
 
         follower.stop();
         ballMechanism.idle();
@@ -68,6 +77,10 @@ public class SpectrixAutoPositionA extends LinearOpMode {
         }
     }
 
+    /**
+     * Helper function to follow a path to completion while continuously updating
+     * the follower, localizer, and ball mechanism subsystem.
+     */
     private void followPath(Path path, String stepName) {
         follower.follow(path);
         while (opModeIsActive() && follower.isBusy()) {
@@ -82,6 +95,29 @@ public class SpectrixAutoPositionA extends LinearOpMode {
         }
     }
 
+    /**
+     * Helper function to execute shooting sequence for a given duration.
+     */
+    private void shootBalls(double durationSeconds, String stepName) {
+        ballMechanism.startShooting();
+        ElapsedTime timer = new ElapsedTime();
+        while (opModeIsActive() && timer.seconds() < durationSeconds) {
+            follower.update();
+            ballMechanism.update();
+
+            Pose pose = follower.pose();
+            telemetry.addData("Step", stepName);
+            telemetry.addData("Shooting Progress", String.format(Locale.US, "%.1f / %.1f sec", timer.seconds(), durationSeconds));
+            telemetry.addData("Shooter RPM", String.format(Locale.US, "%.0f / %.0f RPM", ballMechanism.getCurrentShooterRpm(), ballMechanism.getTargetShootRpm()));
+            telemetry.addData("Position", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", pose.x(), pose.y(), Math.toDegrees(pose.heading())));
+            telemetry.update();
+        }
+        ballMechanism.idle();
+    }
+
+    /**
+     * Helper function to pause execution for a given duration in seconds.
+     */
     private void waitSeconds(double seconds, String stepName) {
         ElapsedTime timer = new ElapsedTime();
         while (opModeIsActive() && timer.seconds() < seconds) {
