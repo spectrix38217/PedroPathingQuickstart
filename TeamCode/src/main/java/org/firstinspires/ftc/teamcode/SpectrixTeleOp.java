@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode
+package org.firstinspires.ftc.teamcode;
 
 import com.pedropathing.drivetrain.DrivePowers;
 import com.pedropathing.follower.Follower;
@@ -57,6 +57,7 @@ public class SpectrixTeleOp extends OpMode {
     private boolean isHeadingLocked = false;
     private boolean isSnapTurning = false;
     private double driveReleaseTime = 0.0;
+    private double headingReleaseTime = 0.0;
     private static final double STICK_THRESHOLD = 0.05;
     private static final double POINTING_THRESHOLD = 0.20;       // Right stick activation threshold
     private static final double SETTLING_DELAY_SEC = 0.35;       // 350ms settling delay for heavier robot
@@ -114,11 +115,26 @@ public class SpectrixTeleOp extends OpMode {
         targetPositionPose = follower.pose();
         targetHeading = follower.pose().heading();
         driveReleaseTime = getRuntime();
+        headingReleaseTime = getRuntime();
     }
 
     @Override
     public void loop() {
-        // Call this once per loop
+        // Release stationary hold as soon as the driver commands motion.
+        boolean stickCommand =
+                Math.hypot(gamepad1.left_stick_x, gamepad1.left_stick_y)
+                        > STICK_THRESHOLD
+                || Math.hypot(gamepad1.right_stick_x, gamepad1.right_stick_y)
+                        >= POINTING_THRESHOLD;
+        
+        if (!automatedDrive && stickCommand && isPositionLocked) {
+            follower.manual(DrivePowers.zero());
+            isPositionLocked = false;
+            isHeadingLocked = false;
+            driveReleaseTime = getRuntime();
+        }
+        
+        // Keep exactly one follower update per loop.
         follower.update();
 
         boolean dpadUpPressed = gamepad1.dpad_up && !previousDpadUp;
@@ -173,6 +189,13 @@ public class SpectrixTeleOp extends OpMode {
                 driveReleaseTime = getRuntime();
                 isPositionLocked = false;
 
+                // Heading settling depends on the last turning command,
+                // independently of forward/strafe input.
+                if (isPointingHeading || isSnapTurning) {
+                    headingReleaseTime = getRuntime();
+                    isHeadingLocked = false;
+                }
+
                 double turnPower;
                 if (isSnapTurning) {
                     // Automated D-Pad Snap Turn to targetHeading
@@ -198,9 +221,16 @@ public class SpectrixTeleOp extends OpMode {
                         turnPower = 0.0;
                     }
                 } else {
-                    // Driver is driving straight/strafing without turning -> Damped PD Heading Lock
-                    double timeSinceRelease = getRuntime() - driveReleaseTime;
-                    if (timeSinceRelease < SETTLING_DELAY_SEC) {
+                    // Heading hold disabled until we verify encoder/localizer feedback.
+                    turnPower = 0.0;
+                    isHeadingLocked = false;
+                
+                    /*
+                    // To enable: remove the two assignments above and uncomment this block.
+                    double timeSinceHeadingRelease =
+                            getRuntime() - headingReleaseTime;
+                
+                    if (timeSinceHeadingRelease < SETTLING_DELAY_SEC) {
                         turnPower = 0.0;
                         isHeadingLocked = false;
                     } else {
@@ -208,16 +238,23 @@ public class SpectrixTeleOp extends OpMode {
                             targetHeading = follower.pose().heading();
                             isHeadingLocked = true;
                         }
-
-                        double headingError = Angle.error(follower.pose().heading(), targetHeading);
+                
+                        double headingError =
+                                Angle.error(follower.pose().heading(), targetHeading);
+                
                         if (Math.abs(headingError) > HEADING_DEADBAND) {
                             double angularVelocity = follower.velocity().omega;
-                            double turnPD = (headingError * HEADING_P) - (angularVelocity * HEADING_D);
-                            turnPower = Math.min(MAX_CORRECTION_POWER, Math.max(-MAX_CORRECTION_POWER, turnPD));
+                            double turnPD =
+                                    headingError * HEADING_P
+                                    - angularVelocity * HEADING_D;
+                
+                            turnPower = Math.max(-MAX_CORRECTION_POWER,
+                                    Math.min(MAX_CORRECTION_POWER, turnPD));
                         } else {
                             turnPower = 0.0;
                         }
                     }
+                    */
                 }
 
                 DrivePowers powers = ManualDrive.fieldCentric(
@@ -388,11 +425,24 @@ public class SpectrixTeleOp extends OpMode {
         telemetry.addData("targetHeading", String.format(Locale.US, "%.2f°", Math.toDegrees(targetHeading)));
         telemetry.addData("velocity", String.format(Locale.US, "VX: %.2f, VY: %.2f, W: %.2f°/s", velocity.vx, velocity.vy, Math.toDegrees(velocity.omega)));
 
+        // What the controller thinks its doing
+        telemetry.addData("Pedro mode", follower.mode());
+        telemetry.addData("Drive input", isDriving);
+        telemetry.addData("Heading input", isPointingHeading);
+        telemetry.addData("Snap turning", isSnapTurning);
+        telemetry.addData("Seconds since drive", "%.2f", getRuntime() - driveReleaseTime);
+        
         // add motor ticks to telemetry
         telemetry.addData("frontLeft Ticks", frontLeft.getCurrentPosition());
         telemetry.addData("frontRight Ticks", frontRight.getCurrentPosition());
         telemetry.addData("backLeft Ticks", backLeft.getCurrentPosition());
         telemetry.addData("backRight Ticks", backRight.getCurrentPosition());
+
+        // Motor modes
+        telemetry.addData("FL mode", frontLeft.getMode());
+        telemetry.addData("FR mode", frontRight.getMode());
+        telemetry.addData("BL mode", backLeft.getMode());
+        telemetry.addData("BR mode", backRight.getMode());
 
         if (follower.drivetrain instanceof Mecanum) {
             Mecanum mecanum = (Mecanum) follower.drivetrain;
