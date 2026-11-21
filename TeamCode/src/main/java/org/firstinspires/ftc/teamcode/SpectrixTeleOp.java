@@ -122,12 +122,12 @@ public class SpectrixTeleOp extends OpMode {
         double forwardInput;
         if (dpadAloneActive && gamepad1.dpad_up) forwardInput = 1.0;
         else if (dpadAloneActive && gamepad1.dpad_down) forwardInput = -1.0;
-        else forwardInput = leftStickY * leftStickY * leftStickY; // Cubed for smoother proportional control
+        else forwardInput = (leftStickY * leftStickY * leftStickY) * 0.5; // Cubed for smoother proportional control, scaled to 0.5 max
 
         double lateralInput;
         if (dpadAloneActive && gamepad1.dpad_left) lateralInput = 1.0;
         else if (dpadAloneActive && gamepad1.dpad_right) lateralInput = -1.0;
-        else lateralInput = leftStickX * leftStickX * leftStickX; // Cubed for smoother proportional control
+        else lateralInput = (leftStickX * leftStickX * leftStickX) * 0.5; // Cubed for smoother proportional control, scaled to 0.5 max
 
         double rx = -gamepad1.right_stick_x; // Flipped X component so Left/Right match field orientation
         double ry = -gamepad1.right_stick_y;  // Inverted Y component so UP is positive

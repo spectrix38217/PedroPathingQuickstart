@@ -114,10 +114,11 @@ public class Constants {
 //    );
 public static ForesightConfig foresightConfig = new ForesightConfig(
         c -> {
-            Controller primaryTranslationalForward = Controller.proportional(0.20746536725047024);
-            Controller secondaryTranslationalForward = Controller.proportional(0.07665290962233831);
-            Controller primaryTranslationalLateral = Controller.proportional(0.26461773381969433);
-            Controller secondaryTranslationalLateral = Controller.proportional(0.09776918193030615);
+            // Lowered proportional gains by ~30% and added small D-gains to stop oscillation/shaking
+            Controller primaryTranslationalForward = Controller.pid(0.15, 0.0, 0.015);
+            Controller secondaryTranslationalForward = Controller.pid(0.05, 0.0, 0.005);
+            Controller primaryTranslationalLateral = Controller.pid(0.18, 0.0, 0.018);
+            Controller secondaryTranslationalLateral = Controller.pid(0.07, 0.0, 0.007);
 
             c.forwardTranslational.set(Controller.piecewise(secondaryTranslationalForward).put(2.5, primaryTranslationalForward));
             c.strafeTranslational.set(Controller.piecewise(secondaryTranslationalLateral).put(2.5, primaryTranslationalLateral));
@@ -125,7 +126,7 @@ public static ForesightConfig foresightConfig = new ForesightConfig(
             c.coast.set(Controller.proportionalFeedforward(0.00986822958870424));
             c.brake.set(Controller.proportionalFeedforward(0.008387995150398604));
 
-            c.headingFeedback.set(Controller.proportional(3.29992863438942));
+            c.headingFeedback.set(Controller.pid(2.5, 0.0, 0.1));
             c.headingBrakeCoefficients.set(Vector2D.cartesian(0.06101420673066478, 0.005836027332170973));
 
             c.linearBrakeCoefficients.set(Matrix.diag(0.09312318256846111, 0.053350517226596235));
@@ -155,7 +156,7 @@ public static ForesightConfig foresightConfig = new ForesightConfig(
         public static double STOPPER_CLOSED_POS = 0.3;
 
         // Feeder CRServo Power Levels (-1.0 to 1.0)
-        public static double FEEDER_SHOOT_POWER = -1.0; // Predefined full speed in reverse to feed shooter
+        public static double FEEDER_SHOOT_POWER = -0.7; // Slowed down from -1.0 so balls aren't fed too fast
         public static double FEEDER_HOLD_POWER = 0.0;  // Holding position (stopped)
         public static double FEEDER_FORWARD_POWER = 1.0;
     }

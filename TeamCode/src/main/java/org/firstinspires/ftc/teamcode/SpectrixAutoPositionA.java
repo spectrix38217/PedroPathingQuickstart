@@ -33,7 +33,7 @@ public class SpectrixAutoPositionA extends LinearOpMode {
     public void runOpMode() throws InterruptedException {
         follower = Constants.create(hardwareMap);
         ballMechanism = new BallMechanism(hardwareMap);
-        ballMechanism.setTargetShootRpm(4500.0); // Launch at 4500 RPM for Position A
+        ballMechanism.setTargetShootRpm(4550.0); // Launch at 4550 RPM for Position A
 
         Pose startPose = new Pose(0, 0, 0); // Starting position for Position A
         follower.setPose(startPose);
@@ -55,7 +55,7 @@ public class SpectrixAutoPositionA extends LinearOpMode {
         Path pathBackToIntermediate1 = line(intakePose, intermediate1).linear(Math.toRadians(180), Math.toRadians(180));
 
         // Path 5: Drive to handoff position: X: 10.0 in, Y: 60.0 in, Heading: 0°
-        Pose handoffPose = new Pose(10, 66, 0);
+        Pose handoffPose = new Pose(6, 66, 0);
         Path pathHandoff = line(intermediate1, handoffPose).linear(Math.toRadians(180), 0);
 
         telemetry.addData("Status", "SpectrixAuto Position A Initialized & Ready!");
