@@ -152,9 +152,9 @@ public static ForesightConfig foresightConfig = new ForesightConfig(
         public static double BAR_OFFSET = 0.45; // right = 0.5 + 0.45 (0.95), left = 0.5 - 0.45 (0.05)
 
         // Stopper Servo Positions
-        public static double STOPPER_NEUTRAL_POS = 0.53;
-        public static double STOPPER_OPEN_POS = 0.8;
-        public static double STOPPER_CLOSED_POS = 0.53;
+        public static double STOPPER_NEUTRAL_POS = 0.3;
+        public static double STOPPER_OPEN_POS = 0.5;
+        public static double STOPPER_CLOSED_POS = 0.3;
 
         // Feeder CRServo Power Levels (-1.0 to 1.0)
         public static double FEEDER_SHOOT_POWER = -1.0; // Predefined full speed in reverse to feed shooter

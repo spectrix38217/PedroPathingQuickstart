@@ -7,7 +7,6 @@ import com.pedropathing.math.Pose;
 import com.pedropathing.math.Velocity;
 import com.pedropathing.revhub.drivetrains.Mecanum;
 import com.pedropathing.utils.Angle;
-
 import org.firstinspires.ftc.teamcode.pedro.Constants;
 
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
@@ -40,7 +39,7 @@ public class SpectrixTeleOp extends OpMode {
     private Pose activeTargetPose = Pose.zero();
     private String activeTargetName = "";
 
-    // Absolute Pointing Rotation & Snap-Turn Gains (Smooth, non-oscillating rotation)
+    // Absolute Pointing Rotation Gains (Smooth, non-oscillating rotation)
     private static final double ABSOLUTE_HEADING_P = 0.45;       // Smooth proportional gain for angle pointing
     private static final double ABSOLUTE_HEADING_D = 0.08;       // High derivative damping to eliminate overshoot
     private static final double MAX_ABSOLUTE_TURN_POWER = 0.50;  // Cap turning power at 50% for stable rotation
@@ -50,7 +49,6 @@ public class SpectrixTeleOp extends OpMode {
     private double targetHeading = 0.0;
     private boolean isPositionLocked = false;
     private boolean isHeadingLocked = false;
-    private boolean isSnapTurning = false;
     private double driveReleaseTime = 0.0;
     private static final double STICK_THRESHOLD = 0.05;
     private static final double POINTING_THRESHOLD = 0.20;       // Right stick activation threshold
@@ -93,7 +91,6 @@ public class SpectrixTeleOp extends OpMode {
         targetHeading = follower.pose().heading();
         isPositionLocked = false;
         isHeadingLocked = false;
-        isSnapTurning = false;
         driveReleaseTime = 0.0;
     }
 
@@ -120,35 +117,23 @@ public class SpectrixTeleOp extends OpMode {
 
         double forwardInput = -gamepad1.left_stick_y;
         double lateralInput = -gamepad1.left_stick_x;
+
+        // D-Pad Directional Driving (Pressed alone without modifiers like Y, A, RB, LT > 0.5)
+        boolean dpadAloneActive = !gamepad1.y && !gamepad1.a && !gamepad1.right_bumper && gamepad1.left_trigger <= 0.5;
+        if (dpadAloneActive) {
+            if (gamepad1.dpad_up) forwardInput = 1.0;
+            else if (gamepad1.dpad_down) forwardInput = -1.0;
+
+            if (gamepad1.dpad_left) lateralInput = 1.0;
+            else if (gamepad1.dpad_right) lateralInput = -1.0;
+        }
+
         double rx = -gamepad1.right_stick_x; // Flipped X component so Left/Right match field orientation
         double ry = -gamepad1.right_stick_y;  // Inverted Y component so UP is positive
 
         double rightStickMagnitude = Math.hypot(rx, ry);
         boolean isDriving = Math.hypot(forwardInput, lateralInput) > STICK_THRESHOLD;
         boolean isPointingHeading = rightStickMagnitude >= POINTING_THRESHOLD;
-
-        // If driver touches the sticks, cancel any ongoing automatic snap turn
-        if (isPointingHeading || isDriving) {
-            isSnapTurning = false;
-        }
-
-        // Check for D-Pad Snap-Turn triggers (Pressed alone without modifiers)
-        boolean dpadAloneActive = !gamepad1.y && !gamepad1.a && !gamepad1.right_bumper && gamepad1.left_trigger <= 0.5;
-        if (dpadAloneActive) {
-            if (dpadUpPressed) {
-                targetHeading = 0.0; // 0 degrees
-                isSnapTurning = true;
-            } else if (dpadLeftPressed) {
-                targetHeading = Math.toRadians(90.0); // 90 degrees (Left)
-                isSnapTurning = true;
-            } else if (dpadDownPressed) {
-                targetHeading = Math.toRadians(180.0); // 180 degrees (Down)
-                isSnapTurning = true;
-            } else if (dpadRightPressed) {
-                targetHeading = Math.toRadians(270.0); // 270 degrees (Right)
-                isSnapTurning = true;
-            }
-        }
 
         if (!automatedDrive) {
             // Calculate speed multiplier based on Left Trigger input
@@ -157,24 +142,13 @@ public class SpectrixTeleOp extends OpMode {
             double forward = forwardInput * currentMultiplier;
             double lateral = lateralInput * currentMultiplier;
 
-            if (isDriving || isPointingHeading || isSnapTurning) {
-                // Driver is actively steering, pointing right stick, or executing a snap turn -> Manual Drive
+            if (isDriving || isPointingHeading) {
+                // Driver is actively steering or driving (via stick or D-Pad) -> Manual Drive
                 driveReleaseTime = getRuntime();
                 isPositionLocked = false;
 
                 double turnPower;
-                if (isSnapTurning) {
-                    // Automated D-Pad Snap Turn to targetHeading
-                    double headingError = Angle.error(follower.pose().heading(), targetHeading);
-                    if (Math.abs(headingError) > HEADING_DEADBAND) {
-                        double angularVelocity = follower.velocity().omega;
-                        double turnPD = (headingError * ABSOLUTE_HEADING_P) - (angularVelocity * ABSOLUTE_HEADING_D);
-                        turnPower = Math.min(MAX_ABSOLUTE_TURN_POWER, Math.max(-MAX_ABSOLUTE_TURN_POWER, turnPD));
-                    } else {
-                        turnPower = 0.0;
-                        isSnapTurning = false; // Reached target heading!
-                    }
-                } else if (isPointingHeading) {
+                if (isPointingHeading) {
                     // Right stick pointing steering
                     targetHeading = Math.atan2(rx, ry);
 
@@ -218,7 +192,7 @@ public class SpectrixTeleOp extends OpMode {
 
                 follower.manual(powers);
             } else {
-                // Driver is NOT touching sticks -> Position & Heading Lock (Resists pushing)
+                // Driver is NOT touching sticks or D-Pad -> Position & Heading Lock (Resists pushing)
                 double timeSinceRelease = getRuntime() - driveReleaseTime;
                 if (timeSinceRelease < SETTLING_DELAY_SEC) {
                     // Settling phase: allow heavier robot to naturally coast to a stop without fighting momentum
@@ -241,7 +215,6 @@ public class SpectrixTeleOp extends OpMode {
             // Re-arm heading/position lock when automated drive finishes
             isPositionLocked = false;
             isHeadingLocked = false;
-            isSnapTurning = false;
             driveReleaseTime = getRuntime();
         }
 
@@ -252,7 +225,6 @@ public class SpectrixTeleOp extends OpMode {
             targetHeading = 0.0;
             isPositionLocked = false;
             isHeadingLocked = false;
-            isSnapTurning = false;
             driveReleaseTime = getRuntime();
         }
 
@@ -316,7 +288,6 @@ public class SpectrixTeleOp extends OpMode {
                 targetHeading = follower.pose().heading();
                 isPositionLocked = false;
                 isHeadingLocked = false;
-                isSnapTurning = false;
                 driveReleaseTime = getRuntime();
             } else if (timeInAuto > 0.3) { // Minimum 300ms drive window before checking target arrival
                 double distanceError = follower.pose().distance(activeTargetPose);
@@ -336,7 +307,6 @@ public class SpectrixTeleOp extends OpMode {
                     targetHeading = follower.pose().heading();
                     isPositionLocked = false;
                     isHeadingLocked = false;
-                    isSnapTurning = false;
                     driveReleaseTime = getRuntime();
                 }
             }

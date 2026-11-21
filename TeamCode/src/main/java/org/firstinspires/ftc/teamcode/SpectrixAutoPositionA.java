@@ -36,8 +36,8 @@ public class SpectrixAutoPositionA extends LinearOpMode {
         Pose startPose = new Pose(0, 0, 0); // Starting position for Position A
         follower.setPose(startPose);
 
-        // Path 1: Drive to shooting position: X: 20.71 in, Y: -15.04 in, Heading: 50°
-        Pose shootPose = new Pose(20.71, -15.04, Math.toRadians(50.0));
+        // Path 1: Drive to shooting position: X: 20.71 in, Y: -15.04 in, Heading: 65°
+        Pose shootPose = new Pose(33.39, -10.87, Math.toRadians(65));
         Path pathShoot = line(startPose, shootPose).linear(0, Math.toRadians(50.0));
 
         // Path 2: Drive from shoot position to waypoint (7, 40)
@@ -45,7 +45,7 @@ public class SpectrixAutoPositionA extends LinearOpMode {
         Path pathWaypoint = line(shootPose, waypointPose).linear(Math.toRadians(50.0), Math.toRadians(25.0));
 
         // Path 3: Drive from waypoint to handoff position: X: -3.0 in, Y: 80.0 in, Heading: 0°
-        Pose handoffPose = new Pose(-3, 80, 0);
+        Pose handoffPose = new Pose(4, 80, 0);
         Path pathHandoff = line(waypointPose, handoffPose).linear(Math.toRadians(25.0), 0);
 
         telemetry.addData("Status", "SpectrixAuto Position A Initialized & Ready!");
