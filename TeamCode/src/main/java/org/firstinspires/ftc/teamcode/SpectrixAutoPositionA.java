@@ -39,8 +39,8 @@ public class SpectrixAutoPositionA extends LinearOpMode {
         follower.setPose(startPose);
 
         // Path 1: Drive to shooting position: X: 33.39 in, Y: -10.87 in, Heading: 70°
-        Pose shootPose = new Pose(33.39, -10.87, Math.toRadians(80.0));
-        Path pathShoot = line(startPose, shootPose).linear(0, Math.toRadians(80.0));
+        Pose shootPose = new Pose(33.39, -10.87, Math.toRadians(62.5));
+        Path pathShoot = line(startPose, shootPose).linear(0, Math.toRadians(62.5));
 
         // Path 2: Drive from shoot position to waypoint (7, 40)
         Pose waypointPose = new Pose(7, 40, Math.toRadians(25.0));
