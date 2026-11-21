@@ -46,8 +46,8 @@ public class SpectrixAutoPositionA extends LinearOpMode {
         Pose intermediate1 = new Pose(19.53, 17.91, Math.toRadians(180));
         Path pathIntermediate1 = line(shootPose, intermediate1).linear(Math.toRadians(62.5), Math.toRadians(180));
 
-        // Path 3: Drive to intake (11.3, 18.19) at 0.25 speed
-        Pose intakePose = new Pose(11.3, 16.5, Math.toRadians(180));
+        // Path 3: Drive to intake (11.3, 15.0) at 0.25 speed
+        Pose intakePose = new Pose(11.3, 15.0, Math.toRadians(180));
         Path pathIntake = line(intermediate1, intakePose).linear(Math.toRadians(180), Math.toRadians(180))
                 .with(Constants.foresightConfig.maxPathSpeed.at(0.25));
 
