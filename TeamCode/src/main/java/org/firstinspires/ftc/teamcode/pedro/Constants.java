@@ -11,6 +11,8 @@ import com.pedropathing.revhub.drivetrains.MecanumConfig;
 import com.pedropathing.revhub.localizers.OctoQuadConfig;
 import com.pedropathing.revhub.localizers.OctoQuadLocalizer;
 import com.qualcomm.hardware.digitalchickenlabs.OctoQuad;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
@@ -57,6 +59,21 @@ public class Constants {
         c.headingScalar.set(1.0029082363709239);
     }); */
 
+//    public static OctoQuadConfig localizerConfig = new OctoQuadConfig(c -> {
+//        c.name.set("octoquad");
+//        c.xPodPort.set(0);
+//        c.yPodPort.set(1);
+//        c.ticksPerUnit.set(505.316944406);
+//        c.xPodOffset.set(-1.1023622047244095);
+//        c.yPodOffset.set(0.767716535433071);
+//        c.xPodDirection.set(OctoQuad.EncoderDirection.FORWARD);
+//        c.yPodDirection.set(OctoQuad.EncoderDirection.FORWARD);
+//        c.globalDistanceUnit.set(DistanceUnit.INCH);
+//        c.offsetUnits.set(DistanceUnit.INCH);
+//        c.i2cRecoveryMode.set(OctoQuad.I2cRecoveryMode.MODE_1_PERIPH_RST_ON_FRAME_ERR);
+//        c.headingScalar.set(1.0097679269820663);
+//    });
+
     public static OctoQuadConfig localizerConfig = new OctoQuadConfig(c -> {
         c.name.set("octoquad");
         c.xPodPort.set(0);
@@ -72,31 +89,56 @@ public class Constants {
         c.headingScalar.set(1.0095375423565784);
     });
 
-    public static ForesightConfig foresightConfig = new ForesightConfig(
-            c -> {
-                Controller primaryTranslationalForward = Controller.proportional(0.23383045429363739);
-                Controller secondaryTranslationalForward = Controller.proportional(0.08639410479668803);
-                Controller primaryTranslationalLateral = Controller.proportional(0.318670925643722);
-                Controller secondaryTranslationalLateral = Controller.proportional(0.11774039198139828);
+//    public static ForesightConfig foresightConfig = new ForesightConfig(
+//            c -> {
+//                Controller primaryTranslationalForward = Controller.proportional(0.23383045429363739);
+//                Controller secondaryTranslationalForward = Controller.proportional(0.08639410479668803);
+//                Controller primaryTranslationalLateral = Controller.proportional(0.318670925643722);
+//                Controller secondaryTranslationalLateral = Controller.proportional(0.11774039198139828);
+//
+//                c.forwardTranslational.set(Controller.piecewise(secondaryTranslationalForward).put(2.5, primaryTranslationalForward));
+//                c.strafeTranslational.set(Controller.piecewise(secondaryTranslationalLateral).put(2.5, primaryTranslationalLateral));
+//
+//                c.coast.set(Controller.proportionalFeedforward(0.009864046726247242));
+//                c.brake.set(Controller.proportionalFeedforward(0.008384439717310156));
+//
+//                c.headingFeedback.set(Controller.proportional(3.0749175974993683));
+//                c.headingBrakeCoefficients.set(Vector2D.cartesian(0.06741245521755912, 0.00920443775016025));
+//
+//                c.linearBrakeCoefficients.set(Matrix.diag(0.05637595951731939, 0.06042487205764109));
+//                c.quadraticBrakeCoefficients.set(Matrix.diag(0.002974695651846195, 0.0031578411591617686));
+//
+//                c.maxAchievableForwardVelocity.set(89.14539165651483);
+//                c.maxAchievableStrafeVelocity.set(76.52309304693615);
+//                c.naturalForwardDeceleration.set(17.450772847206967);
+//                c.naturalStrafeDeceleration.set(20.296567510697628);
+//            }
+//    );
+public static ForesightConfig foresightConfig = new ForesightConfig(
+        c -> {
+            Controller primaryTranslationalForward = Controller.proportional(0.20746536725047024);
+            Controller secondaryTranslationalForward = Controller.proportional(0.07665290962233831);
+            Controller primaryTranslationalLateral = Controller.proportional(0.26461773381969433);
+            Controller secondaryTranslationalLateral = Controller.proportional(0.09776918193030615);
 
-                c.forwardTranslational.set(Controller.piecewise(secondaryTranslationalForward).put(2.5, primaryTranslationalForward));
-                c.strafeTranslational.set(Controller.piecewise(secondaryTranslationalLateral).put(2.5, primaryTranslationalLateral));
+            c.forwardTranslational.set(Controller.piecewise(secondaryTranslationalForward).put(2.5, primaryTranslationalForward));
+            c.strafeTranslational.set(Controller.piecewise(secondaryTranslationalLateral).put(2.5, primaryTranslationalLateral));
 
-                c.coast.set(Controller.proportionalFeedforward(0.009864046726247242));
-                c.brake.set(Controller.proportionalFeedforward(0.008384439717310156));
+            c.coast.set(Controller.proportionalFeedforward(0.00986822958870424));
+            c.brake.set(Controller.proportionalFeedforward(0.008387995150398604));
 
-                c.headingFeedback.set(Controller.proportional(3.0749175974993683));
-                c.headingBrakeCoefficients.set(Vector2D.cartesian(0.06741245521755912, 0.00920443775016025));
+            c.headingFeedback.set(Controller.proportional(3.29992863438942));
+            c.headingBrakeCoefficients.set(Vector2D.cartesian(0.06101420673066478, 0.005836027332170973));
 
-                c.linearBrakeCoefficients.set(Matrix.diag(0.05637595951731939, 0.06042487205764109));
-                c.quadraticBrakeCoefficients.set(Matrix.diag(0.002974695651846195, 0.0031578411591617686));
+            c.linearBrakeCoefficients.set(Matrix.diag(0.09312318256846111, 0.053350517226596235));
+            c.quadraticBrakeCoefficients.set(Matrix.diag(0.0013112951645084827, 0.0018857567129918003));
 
-                c.maxAchievableForwardVelocity.set(89.14539165651483);
-                c.maxAchievableStrafeVelocity.set(76.52309304693615);
-                c.naturalForwardDeceleration.set(17.450772847206967);
-                c.naturalStrafeDeceleration.set(20.296567510697628);
-            }
-    );
+            c.maxAchievableForwardVelocity.set(93.36589528234913);
+            c.maxAchievableStrafeVelocity.set(78.47502346539679);
+            c.naturalForwardDeceleration.set(23.267619310797713);
+            c.naturalStrafeDeceleration.set(47.93557985135556);
+        }
+);
 
     // Servo Hardware Mappings & Config Constants
     public static class Servos {
