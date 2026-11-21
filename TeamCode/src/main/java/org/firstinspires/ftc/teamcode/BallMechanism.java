@@ -49,9 +49,8 @@ public class BallMechanism {
     private double lastRpmTarget = 0.0;
 
     private boolean feederReady = false;
+    private boolean initialRampUpCompleted = false;
     private final ElapsedTime shootingTimer = new ElapsedTime();
-    private final ElapsedTime lightTimer = new ElapsedTime();
-    private boolean isLightBlue = true;
 
     public BallMechanism(HardwareMap hardwareMap) {
         barLeft = hardwareMap.get(Servo.class, Constants.Servos.BAR_LEFT_NAME);
@@ -65,6 +64,7 @@ public class BallMechanism {
         if (light instanceof ServoImplEx) {
             ((ServoImplEx) light).setPwmRange(new PwmControl.PwmRange(500, 2500));
         }
+        light.setPosition(0.7275); // Permanently set to Purple / Violet
 
         transfer.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
@@ -184,6 +184,7 @@ public class BallMechanism {
         if (currentState != State.SHOOTING) {
             currentState = State.SHOOTING;
             feederReady = false;
+            initialRampUpCompleted = false;
             shootingTimer.reset();
         }
     }
@@ -274,20 +275,23 @@ public class BallMechanism {
             case SHOOTING:
                 setShooterSpeed(targetShootRpm);
 
-                double timeInShooting = shootingTimer.seconds();
                 double absRpmError = Math.abs(currentShooterRpm - targetShootRpm);
 
-                // Wait until flywheel reaches target speed vicinity (within 150 RPM) OR timeout (1.0 sec)
+                // Check if flywheel is in target speed window (within 75 RPM)
                 boolean atSpeed = (absRpmError <= Constants.Motors.SHOOTER_RPM_TOLERANCE);
-                boolean timedOut = (timeInShooting >= Constants.Motors.SHOOTER_RAMP_TIMEOUT_SEC);
 
                 if (!feederReady) {
-                    if (atSpeed || timedOut) {
+                    double timeInShooting = shootingTimer.seconds();
+                    boolean initialRampTimeout = (timeInShooting >= Constants.Motors.SHOOTER_RAMP_TIMEOUT_SEC);
+
+                    // Allow initial feed after ramp-up at speed or timeout
+                    if (atSpeed || (!initialRampUpCompleted && initialRampTimeout)) {
                         feederReady = true;
+                        initialRampUpCompleted = true;
                     }
                 }
 
-                // If flywheel speed dips below target during rapid fire, pause feeder so RPM recovers to target window
+                // If flywheel speed drops below target window during rapid fire, close stopper & pause feeder until RPM re-stabilizes
                 if (feederReady && !atSpeed) {
                     feederReady = false;
                 }
@@ -298,7 +302,7 @@ public class BallMechanism {
                     feeder.setPower(Constants.Servos.FEEDER_SHOOT_POWER);
                     transfer.setPower(Constants.Motors.TRANSFER_INTAKE_POWER);
                 } else {
-                    // Flywheel still ramping up/recovering: Stopper CLOSED, Feeder & Transfer OFF
+                    // Flywheel recovering: CLOSE stopper immediately, stop feeder & transfer so RPM re-stabilizes
                     closeStopper();
                     feeder.setPower(Constants.Servos.FEEDER_HOLD_POWER);
                     transfer.setPower(Constants.Motors.TRANSFER_STOP_POWER);
@@ -316,19 +320,6 @@ public class BallMechanism {
 
         // Update flywheel velocity controller with low-pass filtering
         updateShooterSpeed();
-
-        // Update RGB Light on a 1-second interval
-        if (lightTimer.seconds() >= 1.0) {
-            isLightBlue = !isLightBlue;
-            if (isLightBlue) {
-                // Sky Blue (approx. 5A74ED) PWM Pulse
-                light.setPosition(0.7075);
-            } else {
-                // Violet (approx. A051C2) PWM Pulse
-                light.setPosition(0.7275);
-            }
-            lightTimer.reset();
-        }
     }
 
     /**
