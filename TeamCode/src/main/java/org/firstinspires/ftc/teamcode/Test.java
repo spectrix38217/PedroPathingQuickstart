@@ -1,0 +1,1 @@
+package org.firstinspires.ftc.teamcode; import com.pedropathing.follower.Follower; import com.pedropathing.paths.Path; import org.firstinspires.ftc.teamcode.pedro.Constants; public class Test{ void test(Follower f, Path p){ p.with(Constants.foresightConfig.maxPathSpeed.at(0.25)); } }
