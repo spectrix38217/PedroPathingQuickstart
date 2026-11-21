@@ -16,6 +16,7 @@ import org.firstinspires.ftc.teamcode.pedro.Constants;
  * - "transfer" (DcMotor for intake & outtake transfer)
  * - "shooter" (DcMotorEx with encoder for high-speed shooter flywheel control)
  */
+@SuppressWarnings("unused")
 public class BallMechanism {
 
     public enum State {
@@ -203,6 +204,13 @@ public class BallMechanism {
 
     public double getTargetShootRpm() {
         return targetShootRpm;
+    }
+
+    public void setTargetShootRpm(double targetShootRpm) {
+        this.targetShootRpm = Math.min(Constants.Motors.SHOOTER_MAX_RPM, Math.max(1000.0, targetShootRpm));
+        if (currentState == State.SHOOTING) {
+            setShooterSpeed(this.targetShootRpm);
+        }
     }
 
     /**

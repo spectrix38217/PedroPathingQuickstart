@@ -122,7 +122,7 @@ The following files represent the **golden reference implementations** for this 
    - [BallMechanism.java](file:///C:/Users/spectrix/StudioProjects/PedroPathingQuickstart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/BallMechanism.java) — Golden reference for non-drivetrain mechanism encapsulation (`barLeft`, `barRight`, `stopper`, `feeder`, `transfer`, `shooter`).
 
 3. **Standard Autonomous Implementation**:
-   - [SpectrixAutoPositionA.java](file:///C:/Users/spectrix/StudioProjects/PedroPathingQuickstart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/SpectrixAutoPositionA.java) — Autonomous OpMode for Position A starting location (drives to $(20.71, -15.04)$ @ $50^\circ$, shoots 4 times, drives through waypoint $(7, 40)$, drives to $(-28.6, 58.1)$ @ $0^\circ$, and hands off).
+   - [SpectrixAutoPositionA.java](file:///C:/Users/spectrix/StudioProjects/PedroPathingQuickstart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/SpectrixAutoPositionA.java) — Autonomous OpMode for Position A starting location (drives to $(33.39, -10.87)$ @ $70^\circ$, launches 4 balls at 4500 RPM, drives through waypoint $(7, 40)$, drives to $(4, 80)$ @ $0^\circ$, and hands off).
    - [SpectrixAutoPositionB.java](file:///C:/Users/spectrix/StudioProjects/PedroPathingQuickstart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/SpectrixAutoPositionB.java) — Autonomous OpMode for Position B starting location with `OpModeStorage` pose handoff.
    - [SpectrixAutoTest.java](file:///C:/Users/spectrix/StudioProjects/PedroPathingQuickstart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/SpectrixAutoTest.java) — Golden reference for sample procedural execution with Pedro Pathing.
 

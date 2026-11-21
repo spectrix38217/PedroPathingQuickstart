@@ -15,6 +15,7 @@ import java.util.Locale;
 /**
  * SpectrixAutoPositionB - Autonomous OpMode for Position B starting location.
  */
+@SuppressWarnings("unused")
 @Autonomous(name = "SpectrixAuto Position B", group = "Autonomous")
 public class SpectrixAutoPositionB extends LinearOpMode {
 
@@ -82,6 +83,7 @@ public class SpectrixAutoPositionB extends LinearOpMode {
         }
     }
 
+    @SuppressWarnings({"SameParameterValue", "unused"})
     private void waitSeconds(double seconds, String stepName) {
         ElapsedTime timer = new ElapsedTime();
         while (opModeIsActive() && timer.seconds() < seconds) {

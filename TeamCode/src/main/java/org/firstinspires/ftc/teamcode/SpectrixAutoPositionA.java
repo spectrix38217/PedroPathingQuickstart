@@ -16,12 +16,13 @@ import java.util.Locale;
  * SpectrixAutoPositionA - Autonomous OpMode for Position A starting location.
  *
  * <p>Execution Flow:
- * 1. Drive to position (20.71, -15.04) facing 50° heading.
- * 2. Shoot 4 times (ramp shooter to target RPM, open stopper, feed balls).
+ * 1. Drive to shooting position (33.39, -10.87) facing 70° heading.
+ * 2. Shoot 4 times at 4500 RPM.
  * 3. Drive to waypoint (7, 40).
- * 4. Drive to final handoff position (-28.6, 58.1) facing 0° heading and hand off.
+ * 4. Drive to final handoff position (4, 80) facing 0° heading and hand off.
  * 5. Save final pose to OpModeStorage & SpectrixTeleOp.startingPose upon completion.
  */
+@SuppressWarnings("unused")
 @Autonomous(name = "SpectrixAuto Position A", group = "Autonomous")
 public class SpectrixAutoPositionA extends LinearOpMode {
 
@@ -32,19 +33,20 @@ public class SpectrixAutoPositionA extends LinearOpMode {
     public void runOpMode() throws InterruptedException {
         follower = Constants.create(hardwareMap);
         ballMechanism = new BallMechanism(hardwareMap);
+        ballMechanism.setTargetShootRpm(4500.0); // Launch at 4500 RPM for Position A
 
         Pose startPose = new Pose(0, 0, 0); // Starting position for Position A
         follower.setPose(startPose);
 
-        // Path 1: Drive to shooting position: X: 20.71 in, Y: -15.04 in, Heading: 65°
-        Pose shootPose = new Pose(33.39, -10.87, Math.toRadians(65));
-        Path pathShoot = line(startPose, shootPose).linear(0, Math.toRadians(50.0));
+        // Path 1: Drive to shooting position: X: 33.39 in, Y: -10.87 in, Heading: 70°
+        Pose shootPose = new Pose(33.39, -10.87, Math.toRadians(70.0));
+        Path pathShoot = line(startPose, shootPose).linear(0, Math.toRadians(70.0));
 
         // Path 2: Drive from shoot position to waypoint (7, 40)
         Pose waypointPose = new Pose(7, 40, Math.toRadians(25.0));
-        Path pathWaypoint = line(shootPose, waypointPose).linear(Math.toRadians(50.0), Math.toRadians(25.0));
+        Path pathWaypoint = line(shootPose, waypointPose).linear(Math.toRadians(70.0), Math.toRadians(25.0));
 
-        // Path 3: Drive from waypoint to handoff position: X: -3.0 in, Y: 80.0 in, Heading: 0°
+        // Path 3: Drive from waypoint to handoff position: X: 4.0 in, Y: 80.0 in, Heading: 0°
         Pose handoffPose = new Pose(4, 80, 0);
         Path pathHandoff = line(waypointPose, handoffPose).linear(Math.toRadians(25.0), 0);
 
@@ -56,8 +58,8 @@ public class SpectrixAutoPositionA extends LinearOpMode {
 
         if (isStopRequested()) return;
 
-        // --- Action 1: Drive to shooting position (20.71, -15.04) @ 50° ---
-        followPath(pathShoot, "1/4: Driving to Shoot Position");
+        // --- Action 1: Drive to shooting position (33.39, -10.87) @ 70° ---
+        followPath(pathShoot, "1/4: Driving to Shoot Position (33.39, -10.87) @ 70°");
 
         // --- Action 2: Shoot 4 times (runs shooter flywheel & feeds balls for 4.0 seconds) ---
         shootBalls(4.0, "2/4: Shooting 4 Balls");
@@ -65,8 +67,8 @@ public class SpectrixAutoPositionA extends LinearOpMode {
         // --- Action 3: Drive to waypoint (7, 40) ---
         followPath(pathWaypoint, "3/4: Driving to Waypoint (7, 40)");
 
-        // --- Action 4: Drive to handoff position (-28.6, 58.1) @ 0° heading ---
-        followPath(pathHandoff, "4/4: Driving to Handoff (-28.6, 58.1)");
+        // --- Action 4: Drive to handoff position (4, 80) @ 0° heading ---
+        followPath(pathHandoff, "4/4: Driving to Handoff (4, 80)");
 
         follower.stop();
         ballMechanism.idle();
@@ -106,6 +108,7 @@ public class SpectrixAutoPositionA extends LinearOpMode {
     /**
      * Helper function to execute shooting sequence for a given duration.
      */
+    @SuppressWarnings({"SameParameterValue", "unused"})
     private void shootBalls(double durationSeconds, String stepName) {
         ballMechanism.startShooting();
         ElapsedTime timer = new ElapsedTime();
@@ -121,21 +124,5 @@ public class SpectrixAutoPositionA extends LinearOpMode {
             telemetry.update();
         }
         ballMechanism.idle();
-    }
-
-    /**
-     * Helper function to pause execution for a given duration in seconds.
-     */
-    private void waitSeconds(double seconds, String stepName) {
-        ElapsedTime timer = new ElapsedTime();
-        while (opModeIsActive() && timer.seconds() < seconds) {
-            follower.update();
-            ballMechanism.update();
-
-            telemetry.addData("Step", stepName);
-            telemetry.addData("Wait Progress", String.format(Locale.US, "%.1f / %.1f sec", timer.seconds(), seconds));
-            telemetry.addData("Position", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", follower.pose().x(), follower.pose().y(), Math.toDegrees(follower.pose().heading())));
-            telemetry.update();
-        }
     }
 }

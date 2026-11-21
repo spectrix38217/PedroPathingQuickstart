@@ -115,18 +115,18 @@ public class SpectrixTeleOp extends OpMode {
         boolean xPressed = gamepad1.x && !previousX;
         boolean yPressed = gamepad1.y && !previousY;
 
-        double forwardInput = -gamepad1.left_stick_y;
-        double lateralInput = -gamepad1.left_stick_x;
-
         // D-Pad Directional Driving (Pressed alone without modifiers like Y, A, RB, LT > 0.5)
         boolean dpadAloneActive = !gamepad1.y && !gamepad1.a && !gamepad1.right_bumper && gamepad1.left_trigger <= 0.5;
-        if (dpadAloneActive) {
-            if (gamepad1.dpad_up) forwardInput = 1.0;
-            else if (gamepad1.dpad_down) forwardInput = -1.0;
 
-            if (gamepad1.dpad_left) lateralInput = 1.0;
-            else if (gamepad1.dpad_right) lateralInput = -1.0;
-        }
+        double forwardInput;
+        if (dpadAloneActive && gamepad1.dpad_up) forwardInput = 1.0;
+        else if (dpadAloneActive && gamepad1.dpad_down) forwardInput = -1.0;
+        else forwardInput = -gamepad1.left_stick_y;
+
+        double lateralInput;
+        if (dpadAloneActive && gamepad1.dpad_left) lateralInput = 1.0;
+        else if (dpadAloneActive && gamepad1.dpad_right) lateralInput = -1.0;
+        else lateralInput = -gamepad1.left_stick_x;
 
         double rx = -gamepad1.right_stick_x; // Flipped X component so Left/Right match field orientation
         double ry = -gamepad1.right_stick_y;  // Inverted Y component so UP is positive
