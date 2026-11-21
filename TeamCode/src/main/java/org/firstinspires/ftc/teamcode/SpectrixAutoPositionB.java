@@ -27,8 +27,12 @@ public class SpectrixAutoPositionB extends LinearOpMode {
         follower = Constants.create(hardwareMap);
         ballMechanism = new BallMechanism(hardwareMap);
 
-        Pose startPose = new Pose(0, 0, 0); // Starting position for Position B
+        Pose startPose = new Pose(0, 0, 0); // Starting position for Position A
         follower.setPose(startPose);
+
+        // Path 1: Drive to shooting position: X: 33.39 in, Y: -10.87 in, Heading: 70°
+        Pose shootPose = new Pose(0, 6, Math.toRadians(90));
+        Path pathShoot = line(startPose, shootPose).linear(0, Math.toRadians(90));
 
         Pose pose1 = new Pose(24, 0, 0);
         Path path1 = line(startPose, pose1).constant(0);
@@ -47,10 +51,12 @@ public class SpectrixAutoPositionB extends LinearOpMode {
 
         if (isStopRequested()) return;
 
-        followPath(path1, "1/3: Driving Forward 24 Inches");
-        waitSeconds(1.0, "Waiting 1 Second");
-        followPath(path2, "2/3: Strafing Left & Turning 90°");
-        followPath(path3, "3/3: Returning to Origin (0,0)");
+        // --- Action 1: Drive to shooting position (33.39, -10.87) @ 70° ---
+        followPath(pathShoot, "1/4: Driving to Shoot Position (33.39, -10.87) @ 70°");
+
+        // --- Action 2: Shoot 4 times (runs shooter flywheel & feeds balls for 4.0 seconds) ---
+        shootBalls(4.0, "2/4: Shooting 4 Balls");
+
 
         follower.stop();
         ballMechanism.idle();
@@ -67,6 +73,23 @@ public class SpectrixAutoPositionB extends LinearOpMode {
             telemetry.addData("Final Saved Pose", String.format(Locale.US, "X: %.2f in, Y: %.2f in, H: %.2f°", finalPose.x(), finalPose.y(), Math.toDegrees(finalPose.heading())));
             telemetry.update();
         }
+    }
+
+    private void shootBalls(double durationSeconds, String stepName) {
+        ballMechanism.startShooting();
+        ElapsedTime timer = new ElapsedTime();
+        while (opModeIsActive() && timer.seconds() < durationSeconds) {
+            follower.update();
+            ballMechanism.update();
+
+            Pose pose = follower.pose();
+            telemetry.addData("Step", stepName);
+            telemetry.addData("Shooting Progress", String.format(Locale.US, "%.1f / %.1f sec", timer.seconds(), durationSeconds));
+            telemetry.addData("Shooter RPM", String.format(Locale.US, "%.0f / %.0f RPM", ballMechanism.getCurrentShooterRpm(), ballMechanism.getTargetShootRpm()));
+            telemetry.addData("Position", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", pose.x(), pose.y(), Math.toDegrees(pose.heading())));
+            telemetry.update();
+        }
+        ballMechanism.idle();
     }
 
     private void followPath(Path path, String stepName) {
