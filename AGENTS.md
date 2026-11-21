@@ -38,10 +38,10 @@ This document records the established architectural patterns, hardware configura
 ### Drivetrain Configuration
 - **Drive Type**: 4-wheel Mecanum Drivetrain
 - **Hardware Map Names**:
-  - `frontLeft` — Motor (Direction: `REVERSE`, RunMode: `RUN_USING_ENCODER`)
-  - `frontRight` — Motor (Direction: `FORWARD`, RunMode: `RUN_USING_ENCODER`)
-  - `backLeft` — Motor (Direction: `REVERSE`, RunMode: `RUN_USING_ENCODER`)
-  - `backRight` — Motor (Direction: `FORWARD`, RunMode: `RUN_USING_ENCODER`)
+  - `frontLeft` — Motor (Direction: `REVERSE`)
+  - `frontRight` — Motor (Direction: `FORWARD`)
+  - `backLeft` — Motor (Direction: `REVERSE`)
+  - `backRight` — Motor (Direction: `FORWARD`)
 - **Zero-Power Behavior**: Automatically handled by `Mecanum` drivetrain class (`FLOAT` during manual drive, `BRAKE` when stopped/holding).
 
 ### Localizer Configuration (OctoQuad)

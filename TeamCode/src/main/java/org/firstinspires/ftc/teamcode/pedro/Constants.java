@@ -11,8 +11,6 @@ import com.pedropathing.revhub.drivetrains.MecanumConfig;
 import com.pedropathing.revhub.localizers.OctoQuadConfig;
 import com.pedropathing.revhub.localizers.OctoQuadLocalizer;
 import com.qualcomm.hardware.digitalchickenlabs.OctoQuad;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
@@ -146,18 +144,10 @@ public class Constants {
     }
 
     public static Follower create(HardwareMap h) {
-        Follower follower = new Follower(
+        return new Follower(
                 new OctoQuadLocalizer(h, localizerConfig),
                 new Mecanum(h, drivetrainConfig),
                 new Foresight(foresightConfig)
         );
-
-        // Configure all 4 drivetrain wheel motors to run with encoders (RUN_USING_ENCODER)
-        h.get(DcMotorEx.class, drivetrainConfig.frontLeftName.get()).setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        h.get(DcMotorEx.class, drivetrainConfig.frontRightName.get()).setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        h.get(DcMotorEx.class, drivetrainConfig.backLeftName.get()).setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        h.get(DcMotorEx.class, drivetrainConfig.backRightName.get()).setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-        return follower;
     }
 }

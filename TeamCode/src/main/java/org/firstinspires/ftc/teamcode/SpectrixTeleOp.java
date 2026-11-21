@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode
+package org.firstinspires.ftc.teamcode;
 
 import com.pedropathing.drivetrain.DrivePowers;
 import com.pedropathing.follower.Follower;
@@ -7,12 +7,11 @@ import com.pedropathing.math.Pose;
 import com.pedropathing.math.Velocity;
 import com.pedropathing.revhub.drivetrains.Mecanum;
 import com.pedropathing.utils.Angle;
+
 import org.firstinspires.ftc.teamcode.pedro.Constants;
 
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorEx;
 
 import java.util.Locale;
 
@@ -20,10 +19,6 @@ import java.util.Locale;
 public class SpectrixTeleOp extends OpMode {
     private Follower follower;
     private BallMechanism ballMechanism;
-    private DcMotorEx frontLeft;
-    private DcMotorEx frontRight;
-    private DcMotorEx backLeft;
-    private DcMotorEx backRight;
 
     public static Pose startingPose; // See ExampleAuto to understand how to use this
     private boolean automatedDrive;
@@ -84,12 +79,6 @@ public class SpectrixTeleOp extends OpMode {
         follower = Constants.create(hardwareMap);
         follower.setPose((startingPose == null) ? Pose.zero() : startingPose);
         follower.update();
-
-        // init the motors for the telemetry thingy
-        frontLeft = hardwareMap.get(DcMotorEx.class, "frontLeft");
-        frontRight = hardwareMap.get(DcMotorEx.class, "frontRight");
-        backLeft = hardwareMap.get(DcMotorEx.class, "backLeft");
-        backRight = hardwareMap.get(DcMotorEx.class, "backRight");
 
         // Initialize Ball Mechanism Subsystem
         ballMechanism = new BallMechanism(hardwareMap);
@@ -387,12 +376,6 @@ public class SpectrixTeleOp extends OpMode {
         telemetry.addData("posLock", isPositionLocked ? String.format(Locale.US, "X: %.2f, Y: %.2f", targetPositionPose.x(), targetPositionPose.y()) : "OFF");
         telemetry.addData("targetHeading", String.format(Locale.US, "%.2f°", Math.toDegrees(targetHeading)));
         telemetry.addData("velocity", String.format(Locale.US, "VX: %.2f, VY: %.2f, W: %.2f°/s", velocity.vx, velocity.vy, Math.toDegrees(velocity.omega)));
-
-        // add motor ticks to telemetry
-        telemetry.addData("frontLeft Ticks", frontLeft.getCurrentPosition());
-        telemetry.addData("frontRight Ticks", frontRight.getCurrentPosition());
-        telemetry.addData("backLeft Ticks", backLeft.getCurrentPosition());
-        telemetry.addData("backRight Ticks", backRight.getCurrentPosition());
 
         if (follower.drivetrain instanceof Mecanum) {
             Mecanum mecanum = (Mecanum) follower.drivetrain;
