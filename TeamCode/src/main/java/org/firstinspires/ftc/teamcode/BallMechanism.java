@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.robotcore.hardware.PwmControl;
+import com.qualcomm.robotcore.hardware.ServoImplEx;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
@@ -33,6 +35,7 @@ public class BallMechanism {
     private final CRServo feeder;
     private final DcMotor transfer;
     private final DcMotorEx shooter;
+    private final Servo light;
 
     private State currentState = State.IDLE;
     private boolean barIsDown = false;
@@ -47,6 +50,8 @@ public class BallMechanism {
 
     private boolean feederReady = false;
     private final ElapsedTime shootingTimer = new ElapsedTime();
+    private final ElapsedTime lightTimer = new ElapsedTime();
+    private boolean isLightBlue = true;
 
     public BallMechanism(HardwareMap hardwareMap) {
         barLeft = hardwareMap.get(Servo.class, Constants.Servos.BAR_LEFT_NAME);
@@ -55,6 +60,11 @@ public class BallMechanism {
         feeder = hardwareMap.get(CRServo.class, Constants.Servos.FEEDER_NAME);
         transfer = hardwareMap.get(DcMotor.class, Constants.Motors.TRANSFER_NAME);
         shooter = hardwareMap.get(DcMotorEx.class, Constants.Motors.SHOOTER_NAME);
+        
+        light = hardwareMap.get(Servo.class, "light");
+        if (light instanceof ServoImplEx) {
+            ((ServoImplEx) light).setPwmRange(new PwmControl.PwmRange(500, 2500));
+        }
 
         transfer.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
@@ -306,6 +316,19 @@ public class BallMechanism {
 
         // Update flywheel velocity controller with low-pass filtering
         updateShooterSpeed();
+
+        // Update RGB Light on a 1-second interval
+        if (lightTimer.seconds() >= 1.0) {
+            isLightBlue = !isLightBlue;
+            if (isLightBlue) {
+                // Sky Blue (approx. 5A74ED) PWM Pulse
+                light.setPosition(0.7075);
+            } else {
+                // Violet (approx. A051C2) PWM Pulse
+                light.setPosition(0.7275);
+            }
+            lightTimer.reset();
+        }
     }
 
     /**

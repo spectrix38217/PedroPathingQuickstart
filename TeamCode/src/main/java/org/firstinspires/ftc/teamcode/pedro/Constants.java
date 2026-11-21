@@ -156,7 +156,7 @@ public static ForesightConfig foresightConfig = new ForesightConfig(
         public static double STOPPER_CLOSED_POS = 0.3;
 
         // Feeder CRServo Power Levels (-1.0 to 1.0)
-        public static double FEEDER_SHOOT_POWER = -0.7; // Slowed down from -1.0 so balls aren't fed too fast
+        public static double FEEDER_SHOOT_POWER = -0.5; // Slowed down from -1.0 so balls aren't fed too fast
         public static double FEEDER_HOLD_POWER = 0.0;  // Holding position (stopped)
         public static double FEEDER_FORWARD_POWER = 1.0;
     }

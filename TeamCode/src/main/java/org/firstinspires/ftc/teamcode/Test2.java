@@ -1,0 +1,1 @@
+package org.firstinspires.ftc.teamcode; import com.qualcomm.hardware.rev.RevBlinkinLedDriver; public class Test2{ void test(RevBlinkinLedDriver b){ b.setPattern(RevBlinkinLedDriver.BlinkinPattern.SKY_BLUE); } }
