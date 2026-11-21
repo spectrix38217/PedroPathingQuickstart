@@ -100,7 +100,7 @@ public class SpectrixAutoPositionA extends LinearOpMode {
         followPath(pathHandoff, "8/9: Driving to Handoff (10, 60)");
 
         // --- Action 9: Ensure we are facing 0° ---
-        follower.hold(new Pose(10, 60, 0));
+        follower.hold(new Pose(10, 66, 0));
         waitSeconds(1.5, "9/9: Holding 0° heading at handoff position");
 
         follower.stop();
