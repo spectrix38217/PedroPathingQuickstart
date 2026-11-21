@@ -267,7 +267,7 @@ public class BallMechanism {
                 double timeInShooting = shootingTimer.seconds();
                 double absRpmError = Math.abs(currentShooterRpm - targetShootRpm);
 
-                // Wait until flywheel reaches target speed vicinity (within 50 RPM) OR timeout (1.0 sec)
+                // Wait until flywheel reaches target speed vicinity (within 150 RPM) OR timeout (1.0 sec)
                 boolean atSpeed = (absRpmError <= Constants.Motors.SHOOTER_RPM_TOLERANCE);
                 boolean timedOut = (timeInShooting >= Constants.Motors.SHOOTER_RAMP_TIMEOUT_SEC);
 
@@ -277,8 +277,8 @@ public class BallMechanism {
                     }
                 }
 
-                // If flywheel speed dips significantly below target during rapid fire, pause feeder so RPM recovers to 50 RPM window
-                if (feederReady && !atSpeed && absRpmError > Constants.Motors.SHOOTER_RPM_TOLERANCE * 2.0) {
+                // If flywheel speed dips below target during rapid fire, pause feeder so RPM recovers to target window
+                if (feederReady && !atSpeed) {
                     feederReady = false;
                 }
 

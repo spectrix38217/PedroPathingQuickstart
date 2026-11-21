@@ -55,7 +55,7 @@ public class SpectrixAutoPositionA extends LinearOpMode {
         Path pathBackToIntermediate1 = line(intakePose, intermediate1).linear(Math.toRadians(180), Math.toRadians(180));
 
         // Path 5: Drive to handoff position: X: 10.0 in, Y: 60.0 in, Heading: 0°
-        Pose handoffPose = new Pose(10, 60, 0);
+        Pose handoffPose = new Pose(10, 66, 0);
         Path pathHandoff = line(intermediate1, handoffPose).linear(Math.toRadians(180), 0);
 
         telemetry.addData("Status", "SpectrixAuto Position A Initialized & Ready!");
@@ -67,29 +67,41 @@ public class SpectrixAutoPositionA extends LinearOpMode {
         if (isStopRequested()) return;
 
         // --- Action 1: Drive to shooting position (33.39, -10.87) @ 62.5° ---
-        followPath(pathShoot, "1/7: Driving to Shoot Position (33.39, -10.87) @ 62.5°");
+        followPath(pathShoot, "1/9: Driving to Shoot Position (33.39, -10.87) @ 62.5°");
+
+        // Hold position during shooting to resist recoil
+        follower.hold(shootPose);
 
         // --- Action 2: Shoot 4 times (runs shooter flywheel & feeds balls for 4.0 seconds) ---
-        shootBalls(4.0, "2/7: Shooting 4 Balls");
+        shootBalls(4.0, "2/9: Shooting 4 Balls");
 
         // --- Action 3: Drive to intermediate1 (19.53, 17.91) @ 180° ---
-        followPath(pathIntermediate1, "3/7: Driving to (19.53, 17.91)");
+        followPath(pathIntermediate1, "3/9: Driving to (19.53, 17.91)");
 
-        // --- Action 4: Lower bar, turn intake on, drive to intake at 0.25 speed ---
+        // --- Action 4: Lower bar, turn intake on, wait 1 second for bar to lower ---
+        follower.hold(intermediate1);
         ballMechanism.barDown();
         ballMechanism.startIntake();
-        followPath(pathIntake, "4/7: Driving to intake (11.3, 18.19) at 0.25 speed");
+        waitSeconds(1.0, "4/9: Waiting for bar to lower");
 
-        // --- Action 5: Stay still for 5 seconds ---
-        waitSeconds(5.0, "5/7: Intaking for 5 seconds");
+        // --- Action 5: Drive to intake at 0.25 speed ---
+        followPath(pathIntake, "5/9: Driving to intake (11.3, 18.19) at 0.25 speed");
+
+        // --- Action 6: Stay still for 5 seconds ---
+        follower.hold(intakePose);
+        waitSeconds(5.0, "6/9: Intaking for 5 seconds");
         ballMechanism.idle(); // Turn intake off
 
-        // --- Action 6: Drive back to intermediate1 and raise bar ---
-        followPath(pathBackToIntermediate1, "6/7: Driving back to (19.53, 17.91)");
+        // --- Action 7: Drive back to intermediate1 and raise bar ---
+        followPath(pathBackToIntermediate1, "7/9: Driving back to (19.53, 17.91)");
         ballMechanism.barUp();
 
-        // --- Action 7: Drive to handoff position (10, 60) @ 0° heading ---
-        followPath(pathHandoff, "7/7: Driving to Handoff (10, 60)");
+        // --- Action 8: Drive to handoff position (10, 60) @ 0° heading ---
+        followPath(pathHandoff, "8/9: Driving to Handoff (10, 60)");
+
+        // --- Action 9: Ensure we are facing 0° ---
+        follower.hold(new Pose(10, 60, 0));
+        waitSeconds(1.5, "9/9: Holding 0° heading at handoff position");
 
         follower.stop();
         ballMechanism.idle();

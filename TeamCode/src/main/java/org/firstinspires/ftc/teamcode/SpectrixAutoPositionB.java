@@ -51,12 +51,22 @@ public class SpectrixAutoPositionB extends LinearOpMode {
 
         if (isStopRequested()) return;
 
-        // --- Action 1: Drive to shooting position (33.39, -10.87) @ 70° ---
-        followPath(pathShoot, "1/4: Driving to Shoot Position (33.39, -10.87) @ 70°");
+        // --- Action 1: Drive to shooting position ---
+        followPath(pathShoot, "1/4: Driving to Shoot Position");
+
+        // Hold position during shooting to resist recoil
+        follower.hold(shootPose);
 
         // --- Action 2: Shoot 4 times (runs shooter flywheel & feeds balls for 4.0 seconds) ---
         shootBalls(4.0, "2/4: Shooting 4 Balls");
 
+        // --- Action 3: Drive to handoff position ---
+        // Implement final return path or parking path as configured
+        followPath(path3, "3/4: Driving to Handoff");
+
+        // --- Action 4: Ensure we are facing correct heading at handoff ---
+        follower.hold(startPose);
+        waitSeconds(1.5, "4/4: Holding final position at handoff");
 
         follower.stop();
         ballMechanism.idle();
