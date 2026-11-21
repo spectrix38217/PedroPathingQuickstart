@@ -174,7 +174,7 @@ public static ForesightConfig foresightConfig = new ForesightConfig(
         // Shooter Motor & Velocity Config
         public static double SHOOTER_MAX_RPM = 5500.0;      // Physical motor max RPM at full 12-14V battery voltage
         public static double SHOOTER_IDLE_RPM = 2500.0;     // Predefined idle speed (2500 RPM)
-        public static double SHOOTER_SHOOT_RPM = 4600.0;    // Target shooting speed (4600 RPM)
+        public static double SHOOTER_SHOOT_RPM = 4750.0;    // Target shooting speed (4600 RPM)
         public static double SHOOTER_RPM_TOLERANCE = 150.0;  // 150 RPM buffer window before stopper opens / re-stabilizes
         public static double SHOOTER_RAMP_TIMEOUT_SEC = 0.8; // Maximum wait time before forced feed
         public static double SHOOTER_TICKS_PER_REV = 28.0; // 1:1 encoder ticks per revolution
