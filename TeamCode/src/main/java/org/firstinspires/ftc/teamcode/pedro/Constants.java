@@ -172,14 +172,14 @@ public static ForesightConfig foresightConfig = new ForesightConfig(
         public static double TRANSFER_STOP_POWER = 0.0;
 
         // Shooter Motor & Velocity Config
-        public static double SHOOTER_MAX_RPM = 5000.0;      // Physical motor max RPM at 12V battery voltage under load
+        public static double SHOOTER_MAX_RPM = 5500.0;      // Physical motor max RPM at full 12-14V battery voltage
         public static double SHOOTER_IDLE_RPM = 2500.0;     // Predefined idle speed (2500 RPM)
-        public static double SHOOTER_SHOOT_RPM = 4600.0;    // Target shooting speed (4500 RPM)
-        public static double SHOOTER_RPM_TOLERANCE = 75.0;   // 75 RPM buffer window before stopper opens / re-stabilizes
-        public static double SHOOTER_RAMP_TIMEOUT_SEC = 1.0; // Maximum wait time before initial feed
+        public static double SHOOTER_SHOOT_RPM = 4600.0;    // Target shooting speed (4600 RPM)
+        public static double SHOOTER_RPM_TOLERANCE = 150.0;  // 150 RPM buffer window before stopper opens / re-stabilizes
+        public static double SHOOTER_RAMP_TIMEOUT_SEC = 0.8; // Maximum wait time before forced feed
         public static double SHOOTER_TICKS_PER_REV = 28.0; // 1:1 encoder ticks per revolution
-        public static double SHOOTER_P = 0.00015;         // Proportional gain for RPM error correction
-        public static double SHOOTER_I = 0.00003;         // Integral gain for steady-state RPM error
+        public static double SHOOTER_P = 0.0004;          // Proportional gain for fast, active RPM correction
+        public static double SHOOTER_I = 0.00005;         // Integral gain for steady-state RPM error
         public static double SHOOTER_FILTER_ALPHA = 0.25;  // Low-pass filter smoothing factor (0.0 to 1.0)
         public static double SHOOTER_MAX_BOOST_POWER = 0.20; // Maximum power boost above feedforward
     }

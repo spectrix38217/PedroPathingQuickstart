@@ -277,23 +277,23 @@ public class BallMechanism {
 
                 double absRpmError = Math.abs(currentShooterRpm - targetShootRpm);
 
-                // Check if flywheel is in target speed window (within 75 RPM)
+                // Check if flywheel is in target speed window
                 boolean atSpeed = (absRpmError <= Constants.Motors.SHOOTER_RPM_TOLERANCE);
 
                 if (!feederReady) {
-                    double timeInShooting = shootingTimer.seconds();
-                    boolean initialRampTimeout = (timeInShooting >= Constants.Motors.SHOOTER_RAMP_TIMEOUT_SEC);
+                    double timeSincePause = shootingTimer.seconds();
+                    boolean recoveryTimeout = (timeSincePause >= Constants.Motors.SHOOTER_RAMP_TIMEOUT_SEC);
 
-                    // Allow initial feed after ramp-up at speed or timeout
-                    if (atSpeed || (!initialRampUpCompleted && initialRampTimeout)) {
+                    // Allow feed if RPM is in window OR recovery timeout (0.8s) expires
+                    if (atSpeed || recoveryTimeout) {
                         feederReady = true;
-                        initialRampUpCompleted = true;
                     }
                 }
 
                 // If flywheel speed drops below target window during rapid fire, close stopper & pause feeder until RPM re-stabilizes
                 if (feederReady && !atSpeed) {
                     feederReady = false;
+                    shootingTimer.reset(); // Reset timer so recovery timeout applies if RPM struggles
                 }
 
                 if (feederReady) {
@@ -342,7 +342,8 @@ public class BallMechanism {
         }
 
         // Calculate raw RPM from encoder velocity (ticks/sec)
-        double ticksPerSec = shooter.getVelocity();
+        // Use Math.abs() so negative encoder direction doesn't cause runaway power
+        double ticksPerSec = Math.abs(shooter.getVelocity());
         double rawRpm = (ticksPerSec * 60.0) / Constants.Motors.SHOOTER_TICKS_PER_REV;
 
         // Low-pass exponential filter to eliminate high-frequency encoder tick noise
@@ -352,24 +353,22 @@ public class BallMechanism {
         // Calculate RPM error
         double rpmError = targetShooterRpm - currentShooterRpm;
 
-        // Reset integral accumulator when current RPM exceeds target to eliminate overshooting
-        if (rpmError < 0) {
-            integralRpmError = 0.0;
-        } else {
-            // Accumulate Integral Error with anti-windup clamping
+        // Accumulate or reset integral accumulator based on error window
+        if (Math.abs(rpmError) < 300.0) {
             integralRpmError += rpmError * 0.02; // ~50Hz loop rate
-            integralRpmError = Math.min(500.0, Math.max(-500.0, integralRpmError));
+            integralRpmError = Math.min(1000.0, Math.max(-1000.0, integralRpmError));
+        } else {
+            integralRpmError = 0.0;
         }
 
         // Feedforward + Proportional + Integral Error Correction
         double ffPower = targetShooterRpm / Constants.Motors.SHOOTER_MAX_RPM;
-        double pOutput = Math.min(0.20, Math.max(-0.20, rpmError * Constants.Motors.SHOOTER_P));
-        double iOutput = Math.min(0.10, Math.max(-0.10, integralRpmError * Constants.Motors.SHOOTER_I));
+        double pOutput = rpmError * Constants.Motors.SHOOTER_P;
+        double iOutput = integralRpmError * Constants.Motors.SHOOTER_I;
 
-        // Allow motor to reach 100% (1.0) power when high RPMs are targeted
+        // Unclamped proportional correction allows power to decrease when overshooting target RPM
         double targetPower = ffPower + pOutput + iOutput;
-        double maxAllowedPower = Math.min(1.0, ffPower + Constants.Motors.SHOOTER_MAX_BOOST_POWER);
-        shooterPower = Math.min(1.0, Math.max(0.0, Math.min(maxAllowedPower, targetPower)));
+        shooterPower = Math.min(1.0, Math.max(0.0, targetPower));
 
         shooter.setPower(shooterPower);
     }
