@@ -33,7 +33,7 @@ public class SpectrixAutoPositionA extends LinearOpMode {
     public void runOpMode() throws InterruptedException {
         follower = Constants.create(hardwareMap);
         ballMechanism = new BallMechanism(hardwareMap);
-        ballMechanism.setTargetShootRpm(4600.0); // Launch at 4500 RPM for Position A
+        ballMechanism.setTargetShootRpm(4500.0); // Launch at 4500 RPM for Position A
 
         Pose startPose = new Pose(0, 0, 0); // Starting position for Position A
         follower.setPose(startPose);

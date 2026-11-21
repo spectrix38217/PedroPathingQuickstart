@@ -7,6 +7,7 @@ import com.pedropathing.math.Pose;
 import com.pedropathing.math.Velocity;
 import com.pedropathing.revhub.drivetrains.Mecanum;
 import com.pedropathing.utils.Angle;
+import com.pedropathing.controllers.PIDController;
 import org.firstinspires.ftc.teamcode.pedro.Constants;
 
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
@@ -45,18 +46,17 @@ public class SpectrixTeleOp extends OpMode {
     private static final double MAX_ABSOLUTE_TURN_POWER = 0.50;  // Cap turning power at 50% for stable rotation
 
     // Heading & Position Lock Controller (Defense Resistance)
-    private Pose targetPositionPose = Pose.zero();
     private double targetHeading = 0.0;
-    private boolean isPositionLocked = false;
     private boolean isHeadingLocked = false;
-    private double driveReleaseTime = 0.0;
     private static final double STICK_THRESHOLD = 0.05;
     private static final double POINTING_THRESHOLD = 0.20;       // Right stick activation threshold
-    private static final double SETTLING_DELAY_SEC = 0.35;       // 350ms settling delay for heavier robot
     private static final double HEADING_P = 0.30;                // Smooth proportional gain for heading hold
     private static final double HEADING_D = 0.04;                // Damping for higher rotational inertia
     private static final double HEADING_DEADBAND = Math.toRadians(1.5); // 1.5 degree deadband
     private static final double MAX_CORRECTION_POWER = 0.20;            // Cap correction power at 20% max
+
+    private PIDController absoluteHeadingPID;
+    private PIDController headingPID;
 
     // Target Arrival Tolerance for Automated Return Drive
     private static final double DISTANCE_TOLERANCE_INCHES = 2.0;
@@ -87,19 +87,17 @@ public class SpectrixTeleOp extends OpMode {
         savedPoseRight = Pose.zero();
         activeTargetPose = Pose.zero();
         activeTargetName = "";
-        targetPositionPose = follower.pose();
         targetHeading = follower.pose().heading();
-        isPositionLocked = false;
         isHeadingLocked = false;
-        driveReleaseTime = 0.0;
+
+        absoluteHeadingPID = new PIDController(ABSOLUTE_HEADING_P, 0.0, ABSOLUTE_HEADING_D);
+        headingPID = new PIDController(HEADING_P, 0.0, HEADING_D);
     }
 
     @Override
     public void start() {
         // Mode will be handled in loop() via follower.manual(...) or follower.hold(...)
-        targetPositionPose = follower.pose();
         targetHeading = follower.pose().heading();
-        driveReleaseTime = getRuntime();
     }
 
     @Override
@@ -118,15 +116,18 @@ public class SpectrixTeleOp extends OpMode {
         // D-Pad Directional Driving (Pressed alone without modifiers like Y, A, RB, LT > 0.5)
         boolean dpadAloneActive = !gamepad1.y && !gamepad1.a && !gamepad1.right_bumper && gamepad1.left_trigger <= 0.5;
 
+        double leftStickY = -gamepad1.left_stick_y;
+        double leftStickX = -gamepad1.left_stick_x;
+
         double forwardInput;
         if (dpadAloneActive && gamepad1.dpad_up) forwardInput = 1.0;
         else if (dpadAloneActive && gamepad1.dpad_down) forwardInput = -1.0;
-        else forwardInput = -gamepad1.left_stick_y;
+        else forwardInput = leftStickY * leftStickY * leftStickY; // Cubed for smoother proportional control
 
         double lateralInput;
         if (dpadAloneActive && gamepad1.dpad_left) lateralInput = 1.0;
         else if (dpadAloneActive && gamepad1.dpad_right) lateralInput = -1.0;
-        else lateralInput = -gamepad1.left_stick_x;
+        else lateralInput = leftStickX * leftStickX * leftStickX; // Cubed for smoother proportional control
 
         double rx = -gamepad1.right_stick_x; // Flipped X component so Left/Right match field orientation
         double ry = -gamepad1.right_stick_y;  // Inverted Y component so UP is positive
@@ -141,91 +142,57 @@ public class SpectrixTeleOp extends OpMode {
 
             double forward = forwardInput * currentMultiplier;
             double lateral = lateralInput * currentMultiplier;
+            double turn = 0.0;
 
-            if (isDriving || isPointingHeading) {
-                // Driver is actively steering or driving (via stick or D-Pad) -> Manual Drive
-                driveReleaseTime = getRuntime();
-                isPositionLocked = false;
+            DrivePowers powers = ManualDrive.fieldCentric(forward, lateral, turn, follower.pose().heading());
 
-                double turnPower;
-                if (isPointingHeading) {
-                    // Right stick pointing steering
-                    targetHeading = Math.atan2(rx, ry);
+            if (isPointingHeading) {
+                // Right stick pointing steering
+                targetHeading = Math.atan2(rx, ry);
+                powers = ManualDrive.headingLock(follower, absoluteHeadingPID, powers, targetHeading);
 
-                    double headingError = Angle.error(follower.pose().heading(), targetHeading);
-                    if (Math.abs(headingError) > HEADING_DEADBAND) {
-                        double angularVelocity = follower.velocity().omega;
-                        double turnPD = (headingError * ABSOLUTE_HEADING_P) - (angularVelocity * ABSOLUTE_HEADING_D);
-                        turnPower = Math.min(MAX_ABSOLUTE_TURN_POWER, Math.max(-MAX_ABSOLUTE_TURN_POWER, turnPD));
-                    } else {
-                        turnPower = 0.0;
-                    }
-                } else {
-                    // Driver is driving straight/strafing without turning -> Damped PD Heading Lock
-                    double timeSinceRelease = getRuntime() - driveReleaseTime;
-                    if (timeSinceRelease < SETTLING_DELAY_SEC) {
-                        turnPower = 0.0;
-                        isHeadingLocked = false;
-                    } else {
-                        if (!isHeadingLocked) {
-                            targetHeading = follower.pose().heading();
-                            isHeadingLocked = true;
-                        }
-
-                        double headingError = Angle.error(follower.pose().heading(), targetHeading);
-                        if (Math.abs(headingError) > HEADING_DEADBAND) {
-                            double angularVelocity = follower.velocity().omega;
-                            double turnPD = (headingError * HEADING_P) - (angularVelocity * HEADING_D);
-                            turnPower = Math.min(MAX_CORRECTION_POWER, Math.max(-MAX_CORRECTION_POWER, turnPD));
-                        } else {
-                            turnPower = 0.0;
-                        }
-                    }
+                double turnPower = powers.turn();
+                if (Math.abs(Angle.error(follower.pose().heading(), targetHeading)) <= HEADING_DEADBAND) {
+                    turnPower = 0.0;
                 }
+                
+                double cappedTurn = Math.min(MAX_ABSOLUTE_TURN_POWER, Math.max(-MAX_ABSOLUTE_TURN_POWER, turnPower));
+                powers = new DrivePowers(powers.forward(), powers.strafe(), cappedTurn);
 
-                DrivePowers powers = ManualDrive.fieldCentric(
-                        forward,
-                        lateral,
-                        turnPower,
-                        follower.pose().heading()
-                );
+                follower.manual(powers);
+                isHeadingLocked = true;
+            } else if (isDriving) {
+                // Driver is driving straight/strafing without turning -> Heading Lock
+                if (!isHeadingLocked) {
+                    targetHeading = follower.pose().heading();
+                    isHeadingLocked = true;
+                }
+                powers = ManualDrive.headingLock(follower, headingPID, powers, targetHeading);
+
+                double turnPower = powers.turn();
+                if (Math.abs(Angle.error(follower.pose().heading(), targetHeading)) <= HEADING_DEADBAND) {
+                    turnPower = 0.0;
+                }
+                
+                double cappedTurn = Math.min(MAX_CORRECTION_POWER, Math.max(-MAX_CORRECTION_POWER, turnPower));
+                powers = new DrivePowers(powers.forward(), powers.strafe(), cappedTurn);
 
                 follower.manual(powers);
             } else {
                 // Driver is NOT touching sticks or D-Pad -> Position & Heading Lock (Resists pushing)
-                double timeSinceRelease = getRuntime() - driveReleaseTime;
-                if (timeSinceRelease < SETTLING_DELAY_SEC) {
-                    // Settling phase: allow heavier robot to naturally coast to a stop without fighting momentum
-                    follower.manual(DrivePowers.zero());
-                    isPositionLocked = false;
-                    isHeadingLocked = false;
-                } else {
-                    // Robot has settled -> Lock position (X, Y) and heading (H) using follower.hold()
-                    if (!isPositionLocked) {
-                        targetPositionPose = follower.pose();
-                        targetHeading = targetPositionPose.heading();
-                        isPositionLocked = true;
-                        isHeadingLocked = true;
-                    }
-
-                    follower.hold(targetPositionPose);
-                }
+                isHeadingLocked = false;
+                ManualDrive.driveOrHold(follower, powers);
             }
         } else {
             // Re-arm heading/position lock when automated drive finishes
-            isPositionLocked = false;
             isHeadingLocked = false;
-            driveReleaseTime = getRuntime();
         }
 
         // Reset Pose Shortcut: Left Bumper + Right Bumper + X
         if (gamepad1.left_bumper && gamepad1.right_bumper && xPressed) {
             follower.setPose(Pose.zero());
-            targetPositionPose = Pose.zero();
             targetHeading = 0.0;
-            isPositionLocked = false;
             isHeadingLocked = false;
-            driveReleaseTime = getRuntime();
         }
 
         // Save Positions: Y + D-Pad Direction (Up = Pos 1, Down = Pos 2, Left = Pos 3, Right = Pos 4)
@@ -286,9 +253,7 @@ public class SpectrixTeleOp extends OpMode {
                 automatedDrive = false;
                 activeTargetName = "";
                 targetHeading = follower.pose().heading();
-                isPositionLocked = false;
                 isHeadingLocked = false;
-                driveReleaseTime = getRuntime();
             } else if (timeInAuto > 0.3) { // Minimum 300ms drive window before checking target arrival
                 double distanceError = follower.pose().distance(activeTargetPose);
                 double headingError = Math.abs(Angle.error(follower.pose().heading(), activeTargetPose.heading()));
@@ -305,9 +270,7 @@ public class SpectrixTeleOp extends OpMode {
                     automatedDrive = false;
                     activeTargetName = "";
                     targetHeading = follower.pose().heading();
-                    isPositionLocked = false;
                     isHeadingLocked = false;
-                    driveReleaseTime = getRuntime();
                 }
             }
         }
@@ -343,7 +306,7 @@ public class SpectrixTeleOp extends OpMode {
         telemetry.addData("position", String.format(Locale.US, "X: %.2f in, Y: %.2f in, H: %.2f°", pose.x(), pose.y(), Math.toDegrees(pose.heading())));
         telemetry.addData("shooterRPM", String.format(Locale.US, "%.0f / %.0f RPM [ShootTarget: %.0f RPM] (Pwr: %.2f)", ballMechanism.getCurrentShooterRpm(), ballMechanism.getTargetShootRpm(), ballMechanism.getTargetShootRpm(), ballMechanism.getShooterPower()));
         telemetry.addData("state", String.format(Locale.US, "Mech: %s | AutoDrive: %s", ballMechanism.getCurrentState(), automatedDrive ? activeTargetName : "OFF"));
-        telemetry.addData("posLock", isPositionLocked ? String.format(Locale.US, "X: %.2f, Y: %.2f", targetPositionPose.x(), targetPositionPose.y()) : "OFF");
+        telemetry.addData("posLock", follower.holding() ? String.format(Locale.US, "X: %.2f, Y: %.2f", pose.x(), pose.y()) : "OFF");
         telemetry.addData("targetHeading", String.format(Locale.US, "%.2f°", Math.toDegrees(targetHeading)));
         telemetry.addData("velocity", String.format(Locale.US, "VX: %.2f, VY: %.2f, W: %.2f°/s", velocity.vx, velocity.vy, Math.toDegrees(velocity.omega)));
 
