@@ -40,27 +40,27 @@ public class SpectrixAutoPositionB extends LinearOpMode {
         ballMechanism = new BallMechanism(hardwareMap);
         ballMechanism.setTargetShootRpm(4750); // Set shooting RPM
 
-        Pose startPose = new Pose(0, 0, 0); // Starting position for Position B
+        Pose startPose = new Pose(0, 56.65, 0); // Starting position for Position B
         follower.setPose(startPose);
 
-        // Path 1: Drive to shooting position: X: 42.17 in, Y: -51.38 in, Heading: 73.26°
-        Pose shootPose = new Pose(42.17, -51.38, Math.toRadians(73.26));
+        // Path 1: Drive to shooting position: X: 42.17 in, Y: 5.27 in, Heading: 73.26°
+        Pose shootPose = new Pose(42.17, 5.27, Math.toRadians(73.26));
         Path pathShoot = line(startPose, shootPose).linear(0, Math.toRadians(73.26));
 
-        // Path 2: Drive to intermediate pose: X: 27.64 in, Y: -15.28 in, Heading: 180°
-        Pose intermediatePose = new Pose(27.64, -15.28, Math.toRadians(180));
+        // Path 2: Drive to intermediate pose: X: 27.64 in, Y: 41.37 in, Heading: 180°
+        Pose intermediatePose = new Pose(27.64, 41.37, Math.toRadians(180));
         Path pathIntermediate = line(shootPose, intermediatePose).linear(Math.toRadians(73.26), Math.toRadians(180));
 
-        // Path 3: Drive to intake pose: X: 10.87 in, Y: -15.67 in, Heading: 180° at 0.25 speed
-        Pose intakePose = new Pose(10.87, -15.67, Math.toRadians(180));
+        // Path 3: Drive to intake pose: X: 10.87 in, Y: 40.98 in, Heading: 180° at 0.25 speed
+        Pose intakePose = new Pose(10.87, 40.98, Math.toRadians(180));
         Path pathIntake = line(intermediatePose, intakePose).linear(Math.toRadians(180), Math.toRadians(180))
                 .with(Constants.foresightConfig.maxPathSpeed.at(0.25));
 
-        // Path 4: Drive back to intermediate pose: X: 27.64 in, Y: -15.28 in, Heading: 180°
+        // Path 4: Drive back to intermediate pose: X: 27.64 in, Y: 41.37 in, Heading: 180°
         Path pathBack = line(intakePose, intermediatePose).linear(Math.toRadians(180), Math.toRadians(180));
 
-        // Path 5: Drive to handoff position: X: 7.13 in, Y: 34.09 in, Heading: 0°
-        Pose handoffPose = new Pose(7.13, 34.09, Math.toRadians(0));
+        // Path 5: Drive to handoff position: X: 7.13 in, Y: 90.74 in, Heading: 0°
+        Pose handoffPose = new Pose(7.13, 90.74, Math.toRadians(0));
         Path pathHandoff = line(intermediatePose, handoffPose).linear(Math.toRadians(180), Math.toRadians(0));
 
         telemetry.addData("Status", "SpectrixAuto Position B Initialized & Ready!");

@@ -35,27 +35,27 @@ public class SpectrixAutoPositionA extends LinearOpMode {
         ballMechanism = new BallMechanism(hardwareMap);
         ballMechanism.setTargetShootRpm(4750); // Launch at 4550 RPM for Position A
 
-        Pose startPose = new Pose(0, 0, 0); // Starting position for Position A
+        Pose startPose = new Pose(0, 22.64, 0); // Starting position for Position A
         follower.setPose(startPose);
 
-        // Path 1: Drive to shooting position: X: 33.39 in, Y: -10.87 in, Heading: 62.5°
-        Pose shootPose = new Pose(33.39, -10.87, Math.toRadians(62.5));
+        // Path 1: Drive to shooting position: X: 33.39 in, Y: 11.77 in, Heading: 62.5°
+        Pose shootPose = new Pose(33.39, 11.77, Math.toRadians(62.5));
         Path pathShoot = line(startPose, shootPose).linear(0, Math.toRadians(62.5));
 
-        // Path 2: Drive from shoot position to (19.53, 17.91)
-        Pose intermediate1 = new Pose(19.53, 17.91, Math.toRadians(180));
+        // Path 2: Drive from shoot position to (19.53, 40.55)
+        Pose intermediate1 = new Pose(19.53, 40.55, Math.toRadians(180));
         Path pathIntermediate1 = line(shootPose, intermediate1).linear(Math.toRadians(62.5), Math.toRadians(180));
 
-        // Path 3: Drive to intake (11.3, 15.0) at 0.25 speed
-        Pose intakePose = new Pose(11.3, 15.0, Math.toRadians(180));
+        // Path 3: Drive to intake (11.3, 37.64) at 0.25 speed
+        Pose intakePose = new Pose(11.3, 37.64, Math.toRadians(180));
         Path pathIntake = line(intermediate1, intakePose).linear(Math.toRadians(180), Math.toRadians(180))
                 .with(Constants.foresightConfig.maxPathSpeed.at(0.25));
 
-        // Path 4: Drive back to (19.53, 17.91)
+        // Path 4: Drive back to (19.53, 40.55)
         Path pathBackToIntermediate1 = line(intakePose, intermediate1).linear(Math.toRadians(180), Math.toRadians(180));
 
-        // Path 5: Drive to handoff position: X: 10.0 in, Y: 60.0 in, Heading: 0°
-        Pose handoffPose = new Pose(6, 66, 0);
+        // Path 5: Drive to handoff position: X: 6.0 in, Y: 88.64 in, Heading: 0°
+        Pose handoffPose = new Pose(6, 88.64, 0);
         Path pathHandoff = line(intermediate1, handoffPose).linear(Math.toRadians(180), 0);
 
         telemetry.addData("Status", "SpectrixAuto Position A Initialized & Ready!");
@@ -75,8 +75,8 @@ public class SpectrixAutoPositionA extends LinearOpMode {
         // --- Action 2: Shoot 4 times (runs shooter flywheel & feeds balls for 4.0 seconds) ---
         shootBalls(4.0, "2/9: Shooting 4 Balls");
 
-        // --- Action 3: Drive to intermediate1 (19.53, 17.91) @ 180° ---
-        followPath(pathIntermediate1, "3/9: Driving to (19.53, 17.91)");
+        // --- Action 3: Drive to intermediate1 (19.53, -4.73) @ 180° ---
+        followPath(pathIntermediate1, "3/9: Driving to (19.53, -4.73)");
 
         // --- Action 4: Lower bar, turn intake on, wait 1 second for bar to lower ---
         follower.hold(intermediate1);
@@ -85,7 +85,7 @@ public class SpectrixAutoPositionA extends LinearOpMode {
         waitSeconds(1.0, "4/9: Waiting for bar to lower");
 
         // --- Action 5: Drive to intake at 0.25 speed ---
-        followPath(pathIntake, "5/9: Driving to intake (11.3, 18.19) at 0.25 speed");
+        followPath(pathIntake, "5/9: Driving to intake (11.3, -7.64) at 0.25 speed");
 
         // --- Action 6: Stay still for 5 seconds ---
         follower.hold(intakePose);
@@ -93,14 +93,14 @@ public class SpectrixAutoPositionA extends LinearOpMode {
         ballMechanism.idle(); // Turn intake off
 
         // --- Action 7: Drive back to intermediate1 and raise bar ---
-        followPath(pathBackToIntermediate1, "7/9: Driving back to (19.53, 17.91)");
+        followPath(pathBackToIntermediate1, "7/9: Driving back to (19.53, -4.73)");
         ballMechanism.barUp();
 
-        // --- Action 8: Drive to handoff position (10, 60) @ 0° heading ---
-        followPath(pathHandoff, "8/9: Driving to Handoff (10, 60)");
+        // --- Action 8: Drive to handoff position (6, 43.36) @ 0° heading ---
+        followPath(pathHandoff, "8/9: Driving to Handoff (6, 43.36)");
 
         // --- Action 9: Ensure we are facing 0° ---
-        follower.hold(new Pose(10, 66, 0));
+        follower.hold(handoffPose);
         waitSeconds(1.5, "9/9: Holding 0° heading at handoff position");
 
         follower.stop();
