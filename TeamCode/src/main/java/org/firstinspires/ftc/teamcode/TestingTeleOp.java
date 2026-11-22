@@ -83,6 +83,7 @@ public class TestingTeleOp extends OpMode {
         // Reset Pose Shortcut: Left Bumper + Right Bumper + X
         if (gamepad1.left_bumper && gamepad1.right_bumper && xPressed) {
             follower.setPose(Pose.zero());
+            follower.hold(Pose.zero());
         }
 
         if (yPressed && !dpadActive) {

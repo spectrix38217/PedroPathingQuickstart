@@ -209,8 +209,11 @@ public class SpectrixTeleOp extends OpMode {
         // Reset Pose Shortcut: Left Bumper + Right Bumper + X
         if (gamepad1.left_bumper && gamepad1.right_bumper && xPressed) {
             follower.setPose(Pose.zero());
+            follower.hold(Pose.zero());
             targetHeading = 0.0;
             isHeadingLocked = false;
+            automatedDrive = false;
+            activeTargetName = "";
         }
 
         // Save Positions: Y + D-Pad Direction (Up = Pos 1, Down = Pos 2, Left = Pos 3, Right = Pos 4)
@@ -261,6 +264,13 @@ public class SpectrixTeleOp extends OpMode {
 
         // Update Mechanism Subsystem State Machine & Shooter Controller
         ballMechanism.update();
+
+        // Update RGB Light for TeleOp: Solid Cyan ONLY when inside Auto Aim zone (shooting or not), Solid Purple otherwise
+        if (AutoAim.isInArea(follower.pose().x(), follower.pose().y())) {
+            ballMechanism.getRgbLight().setCyan();
+        } else {
+            ballMechanism.getRgbLight().setPurple();
+        }
 
         // Check if automated return drive has reached the target position & settled
         if (automatedDrive) {

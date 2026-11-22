@@ -126,6 +126,7 @@ public class SpectrixAutoPositionC extends LinearOpMode {
         while (opModeIsActive()) {
             follower.update();
             ballMechanism.update();
+            ballMechanism.getRgbLight().cyclePurpleCyan(0.5);
 
             telemetry.addData("Status", "Autonomous Position C Complete!");
             telemetry.addData("Final Saved Pose", String.format(Locale.US, "X: %.2f in, Y: %.2f in, H: %.2f°", finalPose.x(), finalPose.y(), Math.toDegrees(finalPose.heading())));

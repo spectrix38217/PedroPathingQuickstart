@@ -35,7 +35,7 @@ public class BallMechanism {
     private final CRServo feeder;
     private final DcMotor transfer;
     private final DcMotorEx shooter;
-    private final Servo light;
+    private final RgbLight rgbLight;
 
     private State currentState = State.IDLE;
     private boolean barIsDown = false;
@@ -60,11 +60,7 @@ public class BallMechanism {
         transfer = hardwareMap.get(DcMotor.class, Constants.Motors.TRANSFER_NAME);
         shooter = hardwareMap.get(DcMotorEx.class, Constants.Motors.SHOOTER_NAME);
         
-        light = hardwareMap.get(Servo.class, "light");
-        if (light instanceof ServoImplEx) {
-            ((ServoImplEx) light).setPwmRange(new PwmControl.PwmRange(500, 2500));
-        }
-        light.setPosition(0.7275); // Permanently set to Purple / Violet
+        rgbLight = new RgbLight(hardwareMap);
 
         transfer.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
@@ -198,6 +194,7 @@ public class BallMechanism {
             currentState = State.IDLE;
             feederReady = false;
             closeStopper();
+            rgbLight.setPurple();
         }
     }
 
@@ -318,8 +315,17 @@ public class BallMechanism {
                 break;
         }
 
+        // Update indicator light color: Cyan when SHOOTING
+        if (currentState == State.SHOOTING) {
+            rgbLight.setCyan();
+        }
+
         // Update flywheel velocity controller with low-pass filtering
         updateShooterSpeed();
+    }
+
+    public RgbLight getRgbLight() {
+        return rgbLight;
     }
 
     /**

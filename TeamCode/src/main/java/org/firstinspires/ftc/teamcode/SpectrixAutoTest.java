@@ -28,6 +28,8 @@ public class SpectrixAutoTest extends LinearOpMode {
 
     private Follower follower;
 
+    private RgbLight rgbLight;
+
     @Override
     public void runOpMode() throws InterruptedException {
         /*
@@ -35,6 +37,7 @@ public class SpectrixAutoTest extends LinearOpMode {
          * We set the starting pose to origin (0, 0) facing 0 degrees.
          */
         follower = Constants.create(hardwareMap);
+        rgbLight = new RgbLight(hardwareMap);
         Pose startPose = Pose.zero(); // (0, 0, 0 degrees)
         follower.setPose(startPose);
 
@@ -102,6 +105,7 @@ public class SpectrixAutoTest extends LinearOpMode {
 
         while (opModeIsActive()) {
             follower.update(); // Keep localizer updating until driver hits STOP on DS
+            rgbLight.cyclePurpleCyan(0.5);
             telemetry.addData("Status", "Autonomous Complete!");
             telemetry.addData("Final Saved Pose", String.format(Locale.US, "X: %.2f, Y: %.2f, H: %.2f°", finalPose.x(), finalPose.y(), Math.toDegrees(finalPose.heading())));
             telemetry.update();

@@ -69,6 +69,8 @@ This document records the established architectural patterns, hardware configura
   - `transfer` — Motor (Hardware map name: `"transfer"`, intake power: `0.8`, outtake: `-0.6`, zero power behavior: `BRAKE`)
 - **Shooter Flywheel**:
   - `shooter` — `DcMotorEx` with encoder feedback (Hardware map name: `"shooter"`, max physical RPM at 12V: `5000.0` RPM, idle speed: `2500.0` RPM, shooting speed: `4600.0` RPM, zero power behavior: `FLOAT`)
+- **RGB Indicator Light (`RgbLight`)**:
+  - `light` — Servo (Hardware map name: `"light"`, PWM range: `500` to `2500`µs). Controlled via `RgbLight.java` class. Default color is Purple (`0.700` / `1900`µs). In TeleOp, changes to Cyan (`0.550` / `1600`µs) ONLY when inside the Auto Aim zone (shooting or not), Purple otherwise. In Autonomous, light is Cyan while shooting regardless of position, Purple otherwise. Cycles Purple and Cyan at 0.5s intervals upon completion of Autonomous OpModes.
 
 ---
 
@@ -118,8 +120,9 @@ The following files represent the **golden reference implementations** for this 
 1. **TeleOp Implementation**:
    - [SpectrixTeleOp.java](file:///C:/Users/spectrix/StudioProjects/PedroPathingQuickstart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/SpectrixTeleOp.java) — Golden reference for Field-Centric TeleOp, Position & Heading Lock, Analog Slow Mode, Position Save/Return, and Subsystem integration.
 
-2. **Mechanism Subsystem Implementation**:
-   - [BallMechanism.java](file:///C:/Users/spectrix/StudioProjects/PedroPathingQuickstart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/BallMechanism.java) — Golden reference for non-drivetrain mechanism encapsulation (`barLeft`, `barRight`, `stopper`, `feeder`, `transfer`, `shooter`).
+2. **Mechanism Subsystem & Light Controller Implementation**:
+   - [BallMechanism.java](file:///C:/Users/spectrix/StudioProjects/PedroPathingQuickstart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/BallMechanism.java) — Golden reference for non-drivetrain mechanism encapsulation (`barLeft`, `barRight`, `stopper`, `feeder`, `transfer`, `shooter`, `rgbLight`).
+   - [RgbLight.java](file:///C:/Users/spectrix/StudioProjects/PedroPathingQuickstart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/RgbLight.java) — Standalone driver class for goBILDA RGB indicator light PWM control.
 
 3. **Standard Autonomous Implementation**:
    - [SpectrixAutoPositionA.java](file:///C:/Users/spectrix/StudioProjects/PedroPathingQuickstart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/SpectrixAutoPositionA.java) — Autonomous OpMode for Position A starting location (drives to $(33.39, 11.77)$ @ $62.5^\circ$, launches 4 balls at 4750 RPM, drives to $(19.53, 40.55)$, intaking at $0.25$ speed to $(11.3, 37.64)$, drives back, raises bar, drives to $(6, 88.64)$ @ $0^\circ$, and hands off pose).
