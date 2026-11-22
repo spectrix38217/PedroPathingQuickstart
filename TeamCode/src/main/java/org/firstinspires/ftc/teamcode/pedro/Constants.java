@@ -148,7 +148,7 @@ public static ForesightConfig foresightConfig = new ForesightConfig(
 
         // Bar neutral position & offset for mirrored servos
         public static double BAR_NEUTRAL_POS = 0.5;
-        public static double BAR_OFFSET = 0.45; // right = 0.5 + 0.45 (0.95), left = 0.5 - 0.45 (0.05)
+        public static double BAR_OFFSET = 0.4; // right = 0.5 + 0.4 (0.9), left = 0.5 - 0.4 (0.1)
 
         // Stopper Servo Positions
         public static double STOPPER_NEUTRAL_POS = 0.3;

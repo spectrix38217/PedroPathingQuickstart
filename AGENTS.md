@@ -28,8 +28,9 @@ This document records the established architectural patterns, hardware configura
    - **Shooter Ramp-Up & Continuous Feed Shooting Strategy**: When shooting, the shooter flywheel ramps to 4600 RPM default (adjustable via `L2 + D-Pad Left/Right`). The feeder servo and transfer motor wait until the flywheel reaches target velocity within a **150 RPM** buffer (`SHOOTER_RPM_TOLERANCE = 150.0`) OR a 1.0s timeout expires. Once ready, the stopper servo OPENS ($0.5$), and both feeder servo and transfer motor run continuously to feed the shooter. Maximum corrective boost power above feedforward is capped (`SHOOTER_MAX_BOOST_POWER = 0.20`) with instant integral reset on overspeed to prevent aggressive re-ramp overshooting after a ball is shot.
    - **Position Preservation & Handoff**: `OpModeStorage.autonomousEndPose` and `SpectrixTeleOp.startingPose` preserve the robot's field pose seamlessly between Autonomous and TeleOp.
 3. **Autonomous Architecture**:
-   - Standard Sequential `LinearOpMode` (`SpectrixAutoTest`).
-   - Capped path speeds prevent overshooting during automated positioning.
+   - Standard Sequential `LinearOpMode` implementations (`SpectrixAutoPositionA`, `SpectrixAutoPositionB`, `SpectrixAutoPositionC`, `SpectrixAutoTest`).
+   - Capped path speeds prevent overshooting during automated positioning and intaking traversals.
+   - All Autonomous routines store the final end pose to `OpModeStorage.autonomousEndPose` and `SpectrixTeleOp.startingPose` for seamless Autonomous-to-TeleOp handoff.
 
 ---
 
@@ -110,7 +111,6 @@ This document records the established architectural patterns, hardware configura
 
 ---
 
-
 ## 4. Canonical Reference Examples
 
 The following files represent the **golden reference implementations** for this repository:
@@ -122,8 +122,9 @@ The following files represent the **golden reference implementations** for this 
    - [BallMechanism.java](file:///C:/Users/spectrix/StudioProjects/PedroPathingQuickstart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/BallMechanism.java) — Golden reference for non-drivetrain mechanism encapsulation (`barLeft`, `barRight`, `stopper`, `feeder`, `transfer`, `shooter`).
 
 3. **Standard Autonomous Implementation**:
-   - [SpectrixAutoPositionA.java](file:///C:/Users/spectrix/StudioProjects/PedroPathingQuickstart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/SpectrixAutoPositionA.java) — Autonomous OpMode for Position A starting location (drives to $(33.39, -10.87)$ @ $70^\circ$, launches 4 balls at 4500 RPM, drives through waypoint $(7, 40)$, drives to $(4, 80)$ @ $0^\circ$, and hands off).
-   - [SpectrixAutoPositionB.java](file:///C:/Users/spectrix/StudioProjects/PedroPathingQuickstart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/SpectrixAutoPositionB.java) — Autonomous OpMode for Position B starting location with `OpModeStorage` pose handoff.
+   - [SpectrixAutoPositionA.java](file:///C:/Users/spectrix/StudioProjects/PedroPathingQuickstart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/SpectrixAutoPositionA.java) — Autonomous OpMode for Position A starting location (drives to $(33.39, 11.77)$ @ $62.5^\circ$, launches 4 balls at 4750 RPM, drives to $(19.53, 40.55)$, intaking at $0.25$ speed to $(11.3, 37.64)$, drives back, raises bar, drives to $(6, 88.64)$ @ $0^\circ$, and hands off pose).
+   - [SpectrixAutoPositionB.java](file:///C:/Users/spectrix/StudioProjects/PedroPathingQuickstart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/SpectrixAutoPositionB.java) — Autonomous OpMode for Position B starting location (starts at $(0, 56.65)$ @ $0^\circ$, drives to $(42.17, 5.27)$ @ $73.26^\circ$, shoots for 4s, intaking traversal via $(27.64, 41.37)$ to $(10.87, 40.98)$ @ $0.25$ speed, raises bar, drives to $(7.13, 90.74)$ @ $0^\circ$, and hands off pose).
+   - [SpectrixAutoPositionC.java](file:///C:/Users/spectrix/StudioProjects/PedroPathingQuickstart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/SpectrixAutoPositionC.java) — Autonomous OpMode for Position C starting location (starts at $(0, 126.26)$ @ $0^\circ$, drives to $(42.40, 121.30)$ @ $285.26^\circ$, holds 7s, shoots 4s, drives to intermediate $(42.44, 106.65)$ @ $90^\circ$, lowers bar & intaking at $0.25$ speed to $(43.19, 117.91)$ @ $90^\circ$, intakes 4s, drives back to $(42.40, 121.30)$ @ $285.26^\circ$, raises bar & shoots 4s, drives to $(6.61, 106.18)$ @ $0^\circ$, and hands off pose).
    - [SpectrixAutoTest.java](file:///C:/Users/spectrix/StudioProjects/PedroPathingQuickstart/TeamCode/src/main/java/org/firstinspires/ftc/teamcode/SpectrixAutoTest.java) — Golden reference for sample procedural execution with Pedro Pathing.
 
 4. **Servo Calibration Implementation**:
