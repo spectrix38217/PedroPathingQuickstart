@@ -54,7 +54,7 @@ public class SpectrixAutoPositionC extends LinearOpMode {
         Path pathIntermediate = line(shootPose, intermediatePose).linear(Math.toRadians(285.26), Math.toRadians(90));
 
         // Path 3: Drive to intake position: X: 43.19 in, Y: 117.91 in, Heading: 90° at 0.25 speed
-        Pose intakePose = new Pose(43.19, 117.91, Math.toRadians(90));
+        Pose intakePose = new Pose(43.19, 115, Math.toRadians(90));
         Path pathIntake = line(intermediatePose, intakePose).linear(Math.toRadians(90), Math.toRadians(90))
                 .with(Constants.foresightConfig.maxPathSpeed.at(0.25));
 
@@ -78,7 +78,7 @@ public class SpectrixAutoPositionC extends LinearOpMode {
 
         // Hold position for 7 seconds before shooting
         follower.hold(shootPose);
-        waitSeconds(12.0, "2/12: Holding at shoot position for 12 seconds");
+        waitSeconds(7.0, "2/12: Holding at shoot position for 7 seconds");
 
         // --- Action 2: Shoot for 4 seconds ---
         shootBalls(4.0, "3/12: Shooting for 4 seconds");
