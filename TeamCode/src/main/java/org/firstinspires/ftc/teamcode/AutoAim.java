@@ -60,11 +60,39 @@ public class AutoAim {
         new Triangle(A4, A5, A6)
     };
 
+    // Define Area 2 points as provided by the user:
+    // x: 28.11 y: 125.16 heading: 299.82
+    // x: 35.67 y: 111.34 heading: 300.24
+    // x: 56.06 y: 129.41 heading: 270.27
+    // x: 54.72 y: 110.75 heading: 267.95
+    // x: 78.31 y: 110.51 heading: 233.61
+    // x: 80.87 y: 125.94 heading: 241.95
+    private static final Point3D B1 = new Point3D(28.11, 125.16, 299.82);
+    private static final Point3D B2 = new Point3D(35.67, 111.34, 300.24);
+    private static final Point3D B3 = new Point3D(56.06, 129.41, 270.27);
+    private static final Point3D B4 = new Point3D(54.72, 110.75, 267.95);
+    private static final Point3D B5 = new Point3D(80.87, 125.94, 241.95);
+    private static final Point3D B6 = new Point3D(78.31, 110.51, 233.61);
+
+    // Triangles for Area 2
+    private static final Triangle[] AREA_2_TRIANGLES = new Triangle[] {
+        new Triangle(B1, B2, B3),
+        new Triangle(B2, B3, B4),
+        new Triangle(B2, B4, B6),
+        new Triangle(B3, B4, B5),
+        new Triangle(B4, B5, B6)
+    };
+
     /**
      * Checks if the given (x, y) position is inside any defined auto-aim area.
      */
     public static boolean isInArea(double x, double y) {
         for (Triangle t : AREA_1_TRIANGLES) {
+            if (t.contains(x, y)) {
+                return true;
+            }
+        }
+        for (Triangle t : AREA_2_TRIANGLES) {
             if (t.contains(x, y)) {
                 return true;
             }
@@ -78,6 +106,12 @@ public class AutoAim {
      */
     public static double getInterpolatedHeadingRadians(double x, double y) {
         for (Triangle t : AREA_1_TRIANGLES) {
+            if (t.contains(x, y)) {
+                double headingDeg = t.interpolateHeading(x, y);
+                return Math.toRadians(headingDeg);
+            }
+        }
+        for (Triangle t : AREA_2_TRIANGLES) {
             if (t.contains(x, y)) {
                 double headingDeg = t.interpolateHeading(x, y);
                 return Math.toRadians(headingDeg);
